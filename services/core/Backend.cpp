@@ -10,9 +10,11 @@
 #include <algorithm>
 namespace Nexis {
 Backend::Backend(Settings *s, Media *m, System *sys, bool demo, QObject *p)
-    : QObject(p), m_settings(s), m_media(m), m_system(sys), m_demo(demo) {
+    : QObject(p), m_notifications(!demo, this), m_settings(s), m_media(m), m_system(sys),
+      m_demo(demo) {
     connect(m, &Media::changed, this, &Backend::changed);
     connect(sys, &System::changed, this, &Backend::changed);
+    connect(&m_notifications, &Notifications::changed, this, &Backend::changed);
     connect(s, &Settings::changed, this, [this] {
         if (!m_settings->options()["history"].toBool()) {
             m_registry.clearHistory();
@@ -81,6 +83,12 @@ void Backend::clearHistory() {
     m_registry.clearHistory();
     m_jobHistory.clear();
     emit changed();
+}
+void Backend::dismissNotification(uint id) {
+    m_notifications.dismiss(id);
+}
+void Backend::openNotification(uint id) {
+    m_notifications.open(id);
 }
 void Backend::expanded(bool value) {
     if (value && !m_expanded)
@@ -241,14 +249,27 @@ QVariantList Backend::health() const {
     out << QVariantMap{{"name", "Media"},
                        {"status", m_media->players().isEmpty() ? "No MPRIS player" : "Connected"},
                        {"detail", "Playback through the selected player"}};
-    out << QVariantMap{{"name", "Notifications & downloads"},
+    out << QVariantMap{
+        {"name", "Notifications"},
+        {"status", m_notifications.status()},
+        {"detail", "KDE watcher · Plasma keeps ownership and may show its own banners"}};
+    out << QVariantMap{{"name", "Downloads"},
                        {"status", "Unavailable"},
-                       {"detail", "No validated bridge. Plasma keeps ownership."}};
+                       {"detail", "No validated download bridge"}};
     return out;
 }
 QVariantMap Backend::presentationState() const {
-    return Nexis::presentation(sessions(), m_media->current(), m_system->state(),
-                               QDateTime::currentMSecsSinceEpoch());
+    auto out = Nexis::presentation(sessions(), m_media->current(), m_system->state(),
+                                   QDateTime::currentMSecsSinceEpoch());
+    const auto notice = m_notifications.banner();
+    if (!notice.isEmpty() && out["status"] != "critical" && out["status"] != "waiting_permission") {
+        out["mode"] = "notification";
+        out["status"] = "notification";
+        out["title"] = notice["title"].toString().isEmpty() ? notice["appName"] : notice["title"];
+        out["subtitle"] = notice["appName"];
+        out["notificationId"] = notice["id"];
+    }
+    return out;
 }
 bool Backend::PanelAction(const QString &action, const QDBusVariant &value) {
     const auto v = value.variant();
@@ -274,7 +295,14 @@ bool Backend::PanelAction(const QString &action, const QDBusVariant &value) {
         m_system->toggleMute();
     else if (action == "clearHistory")
         clearHistory();
-    else if (action == "reducedMotion" && v.metaType() == QMetaType::fromType<bool>())
+    else if ((action == "dismissNotification" || action == "openNotification") && numeric &&
+             qIsFinite(v.toDouble()) && v.toDouble() >= 1 && v.toDouble() <= 4294967295. &&
+             v.toDouble() == double(v.toUInt())) {
+        if (action == "dismissNotification")
+            dismissNotification(v.toUInt());
+        else
+            openNotification(v.toUInt());
+    } else if (action == "reducedMotion" && v.metaType() == QMetaType::fromType<bool>())
         m_settings->set("reducedMotion", v.toBool());
     else if (action == "expanded" && v.metaType() == QMetaType::fromType<bool>())
         expanded(v.toBool());
@@ -288,12 +316,14 @@ QString Backend::Snapshot() const {
             QJsonObject{{"sessions", QJsonArray::fromVariantList(sessions())},
                         {"history", QJsonArray::fromVariantList(history())},
                         {"jobs", QJsonArray::fromVariantList(jobs())},
+                        {"notifications", QJsonArray::fromVariantList(notifications())},
                         {"primary", QJsonObject::fromVariantMap(primary())},
                         {"presentation", QJsonObject::fromVariantMap(presentationState())},
                         {"media", QJsonObject::fromVariantMap(m_media->current())},
                         {"players", QJsonArray::fromVariantList(m_media->players())},
                         {"system", QJsonObject::fromVariantMap(m_system->state())},
                         {"options", QJsonObject::fromVariantMap(m_settings->options())},
+                        {"darkTheme", m_settings->colors()["dark"].toBool()},
                         {"health", QJsonArray::fromVariantList(health())},
                         {"demo", m_demo}})
             .toJson(QJsonDocument::Compact));

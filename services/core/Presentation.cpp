@@ -18,7 +18,14 @@ QVariantMap presentation(const QVariantList &sessions, const QVariantMap &media,
                  complete.value("completed_ms", complete.value("received_ms")).toLongLong()))
             complete = s;
     }
-    const bool listening = media.value("playing").toBool();
+    const auto title = media.value("title").toString().trimmed().left(200);
+    const bool hasMusic = !title.isEmpty() &&
+                          title.compare("Unknown Music", Qt::CaseInsensitive) != 0 &&
+                          title.compare("Unknown track", Qt::CaseInsensitive) != 0 &&
+                          media.value("playbackStatus") != "Stopped" &&
+                          (media.value("playing").toBool() ||
+                           !media.value("service").toString().isEmpty());
+    const bool listening = hasMusic && media.value("playing").toBool();
     QVariantMap out = {{"mode", "idle"},          {"title", ""},
                        {"working", working > 0},  {"listening", listening},
                        {"workingCount", working}, {"status", "idle"}};
@@ -37,15 +44,10 @@ QVariantMap presentation(const QVariantList &sessions, const QVariantMap &media,
         out["mode"] = "completion";
         out["title"] = agentTitle(complete) + " · Done";
         out["status"] = "turn_complete";
-    } else if (listening) {
+    } else if (hasMusic) {
         out["mode"] = "music";
-        const auto title = media.value("title").toString().trimmed().left(200);
-        out["title"] = title.isEmpty() ? QString("Music") : title;
-        out["status"] = "playing";
-    } else if (working) {
-        out["mode"] = "working";
-        out["title"] = "Working";
-        out["status"] = "running";
+        out["title"] = title;
+        out["status"] = listening ? "playing" : "paused";
     }
     return out;
 }

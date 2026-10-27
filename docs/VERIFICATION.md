@@ -1,5 +1,15 @@
 # Verification — 2026-10-28
 
+## Current notch acceptance
+
+- Full CMake build and all 11 CTest suites pass. GUI regressions reproduce premature artist truncation before the fix, then verify the longest line fits within an explicitly available width and only truncates when that width is exhausted. Other checks cover centered groups, artwork fallback, playback forwarding, hidden/reduced-motion pulse behavior, light appearance, job progress, scroll bounds and notch alpha/input geometry.
+- Width uses the rendered title/subtitle fonts, the longer measured line, and the actual fixed-width artwork/cat/pulse/padding. The old 440 px minimum and independent text-width cap are removed. The host supplies a maximum of 60% of the current screen width.
+- Every expansion opens Music even when an agent permission request exists. The navigation contains only Music, Agents and System; activity-log UI is absent and history defaults off. Live jobs remain in Agents.
+- Native Wayland trace from the installed notch confirms overlay layer 3, exclusive zone -1 and margins `(0,0,0,0)`. The compositor configured the attached notch at `(440,72)` in the initial geometry check; subsequent width is content-driven. Native screenshot alpha confirms transparent shoulders/corners and an opaque notch body. The surface/buffer size assertion passed.
+- Floating `nexis.service` replaces the embedded headless panel mode. Only the owned NEXIS widget was removed; the remaining panel widgets were preserved. Live snapshots report media artwork and notification bridge Connected.
+- A labeled local desktop notification reached the island, retained music context, expired after five seconds and returned presentation to music. KDE remains notification owner and may also show its own popup.
+- A fresh review checked geometry and notification trust/recovery. Important findings were corrected; QtQuick.Shapes is included in the documented Ubuntu runtime requirements. Private-bus tests cover delayed daemon availability, DND recovery, bounded text, forged callbacks, restart, expiry and demo isolation.
+
 Development host: Fedora 43, KDE Plasma/KWin 6.7.5 Wayland, Qt 6.10.3. User target: **new Qoder desktop app 0.4.4**. See ENVIRONMENT.md.
 
 ## Milestone evidence

@@ -19,6 +19,7 @@ Settings::Settings(QObject *p) : QObject(p), m_store("nexis", "Desktop") {
 QVariantMap Settings::options() const {
     QVariantMap defaults = {{"middleClick", "media"},
                             {"theme", "auto"},
+                            {"notchHeight", 72},
                             {"reducedMotion", false},
                             {"hoverExpand", false},
                             {"fullscreenOverlay", false},
@@ -27,18 +28,19 @@ QVariantMap Settings::options() const {
                             {"pinned", ""},
                             {"screen", ""},
                             {"offsetX", 0},
-                            {"offsetY", 12},
-                            {"history", true}};
+                            {"offsetY", 0},
+                            {"history", false}};
     for (auto it = defaults.begin(); it != defaults.end(); ++it) {
         auto value = m_store.value(it.key(), it.value());
         // INI values can reload as strings; keep bool/number types at the QML/JSON boundary.
         if (value.convert(it.value().metaType()))
             it.value() = value;
     }
+    defaults["notchHeight"] = qBound(48, defaults["notchHeight"].toInt(), 120);
     const auto screen = defaults["screen"].toString();
     if (!screen.isEmpty()) {
         defaults["offsetX"] = m_store.value("positions/" + screen + "/x", 0).toInt();
-        defaults["offsetY"] = m_store.value("positions/" + screen + "/y", 12).toInt();
+        defaults["offsetY"] = m_store.value("positions/" + screen + "/y", 0).toInt();
     }
     return defaults;
 }
@@ -47,6 +49,8 @@ void Settings::set(const QString &k, const QVariant &v) {
     if (!opts.contains(k))
         return;
     QVariant value = v;
+    if (k == "notchHeight")
+        value = qBound(48, v.toInt(), 120);
     if (k == "theme" && !QStringList{"auto", "dark", "light"}.contains(v.toString()))
         return;
     if (k == "middleClick" && !QStringList{"media", "toggle", "none"}.contains(v.toString()))
@@ -70,7 +74,7 @@ void Settings::set(const QString &k, const QVariant &v) {
 }
 void Settings::resetPosition() {
     set("offsetX", 0);
-    set("offsetY", 12);
+    set("offsetY", 0);
 }
 QVariantMap Settings::colors() const {
     QSettings kde(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +

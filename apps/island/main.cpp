@@ -1,6 +1,7 @@
 #include "services/core/Backend.h"
 #include "services/core/Collector.h"
 #include "services/core/Compositor.h"
+#include "services/core/NotchGeometry.h"
 #include <QCoreApplication>
 #include <QCursor>
 #include <QDBusConnection>
@@ -72,7 +73,7 @@ class Placement : public QObject {
         const auto rect = screen->geometry();
         const int x = qBound(-(rect.width() - window->width()) / 2, opts["offsetX"].toInt(),
                              qMax(0, (rect.width() - window->width()) / 2));
-        const int y = qBound(0, opts["offsetY"].toInt(), qMax(0, rect.height() - window->height()));
+        const int y = 0;
         window->setScreen(screen);
         compositor->setScreen(screen->name());
 #ifdef HAVE_LAYER_SHELL
@@ -81,10 +82,11 @@ class Placement : public QObject {
             layer->setScreen(screen);
             layer->setAnchors(LayerShellQt::Window::AnchorTop);
             layer->setMargins(QMargins(x, y, -x, 0));
-            layer->setExclusiveZone(0);
+            // -1 uses the output edge instead of avoiding the panel's reserved zone.
+            layer->setExclusiveZone(-1);
             layer->setDesiredSize(window->size());
-            layer->setLayer(opts["fullscreenOverlay"].toBool() ? LayerShellQt::Window::LayerOverlay
-                                                               : LayerShellQt::Window::LayerTop);
+            // Float over the panel without reserving or changing its layout space.
+            layer->setLayer(LayerShellQt::Window::LayerOverlay);
             layer->setActivateOnShow(false);
             layer->setCloseOnDismissed(false);
             layer->setKeyboardInteractivity(
@@ -94,10 +96,7 @@ class Placement : public QObject {
         } else
 #endif
             window->setPosition(rect.x() + (rect.width() - window->width()) / 2 + x, rect.y() + y);
-        QPainterPath mask;
-        mask.addRoundedRect(QRectF(0, 0, window->width(), window->height()),
-                            window->property("expanded").toBool() ? 24 : 22,
-                            window->property("expanded").toBool() ? 24 : 22);
+        const auto mask = notchPath(window->size());
         window->setMask(QRegion(mask.toFillPolygon().toPolygon()));
     }
 };

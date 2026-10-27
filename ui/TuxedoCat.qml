@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 
 Item {
     id: cat
@@ -9,6 +10,7 @@ Item {
     property color accent: "#8bbcff"
     property int frame: 0
     property bool blinking: false
+    readonly property bool activeSurface: visible && (!Window.window || (Window.window.visible && Window.window.visibility !== Window.Minimized))
     readonly property string pose: working ? (listening ? "typingListening" : "typing") : (listening ? "listening" : "idle")
     implicitWidth: 58
     implicitHeight: 36
@@ -21,13 +23,13 @@ Item {
     Timer {
         interval: 170
         repeat: true
-        running: cat.visible && !cat.reducedMotion && (cat.working || cat.listening)
+        running: cat.activeSurface && !cat.reducedMotion && (cat.working || cat.listening)
         onTriggered: { cat.frame = (cat.frame + 1) % 8; sprite.requestPaint() }
     }
     Timer {
         interval: 5200
         repeat: true
-        running: cat.visible && !cat.reducedMotion && !cat.working && !cat.listening
+        running: cat.activeSurface && !cat.reducedMotion && !cat.working && !cat.listening
         onTriggered: { cat.blinking = true; unblink.restart(); sprite.requestPaint() }
     }
     Timer { id: unblink; interval: 140; onTriggered: { cat.blinking = false; sprite.requestPaint() } }

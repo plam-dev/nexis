@@ -80,9 +80,18 @@ void DesktopClient::ownerChanged(const QString &name, const QString &, const QSt
         schedule();
 }
 void DesktopClient::action(const QString &name, const QVariant &value) {
-    static const QSet<QString> allowed = {"playPause",     "next",    "previous", "selectPlayer",
-                                          "seek",          "volume",  "mute",     "clearHistory",
-                                          "reducedMotion", "expanded"};
+    static const QSet<QString> allowed = {"playPause",
+                                          "next",
+                                          "previous",
+                                          "selectPlayer",
+                                          "seek",
+                                          "volume",
+                                          "mute",
+                                          "clearHistory",
+                                          "reducedMotion",
+                                          "expanded",
+                                          "dismissNotification",
+                                          "openNotification"};
     if (!m_connected || !allowed.contains(name))
         return;
     auto message = QDBusMessage::createMethodCall(m_service, path, iface, "PanelAction");

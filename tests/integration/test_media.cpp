@@ -97,6 +97,7 @@ class MediaTest : public QObject {
         QVERIFY(!snapshot.contains("Metadata"));
         QCOMPARE(snapshot["title"].toString().size(), 200);
         QVERIFY(snapshot["playing"].toBool());
+        QCOMPARE(snapshot["playbackStatus"].toString(), QString("Playing"));
         QVERIFY(QJsonDocument(QJsonObject::fromVariantMap(snapshot)).toJson().size() < 4096);
     }
     void discoverSelectControlAndReconnect() {
@@ -123,6 +124,15 @@ class MediaTest : public QObject {
         QCOMPARE(second.controls, 1);
         media.seek(.5);
         QTRY_COMPARE(second.position, qlonglong(60000000));
+        second.metadata["xesam:title"] = "Updated track";
+        second.update();
+        QTRY_COMPARE(media.current()["title"].toString(), QString("Updated track"));
+        second.status = "Stopped";
+        second.metadata.clear();
+        second.update();
+        QTRY_COMPARE(media.current()["playbackStatus"].toString(), QString("Stopped"));
+        QCOMPARE(media.current()["title"].toString(), QString("Unknown track"));
+        second.status = "Playing";
         second.metadata["xesam:title"] = "Updated track";
         second.update();
         QTRY_COMPARE(media.current()["title"].toString(), QString("Updated track"));

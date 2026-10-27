@@ -42,6 +42,24 @@ class FakeScript : public QObject {
 class DesktopTest : public QObject {
     Q_OBJECT
   private slots:
+    void notchHeightIsPersistedAndBounded() {
+        QSettings store("nexis", "Desktop");
+        store.remove("notchHeight");
+        store.sync();
+        Settings settings;
+        QCOMPARE(settings.options()["notchHeight"].toInt(), 72);
+        settings.set("notchHeight", 96);
+        Settings reloaded;
+        QCOMPARE(reloaded.options()["notchHeight"].toInt(), 96);
+        settings.set("notchHeight", 0);
+        QCOMPARE(settings.options()["notchHeight"].toInt(), 48);
+        settings.set("notchHeight", 1000);
+        QCOMPARE(settings.options()["notchHeight"].toInt(), 120);
+        store.setValue("notchHeight", "999");
+        store.sync();
+        QCOMPARE(settings.options()["notchHeight"].toInt(), 120);
+        settings.set("notchHeight", 72);
+    }
     void persistedOptionsKeepTheirTypesInSnapshots() {
         Settings settings;
         settings.set("reducedMotion", QString("false"));

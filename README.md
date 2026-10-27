@@ -1,6 +1,6 @@
 # NEXIS
 
-**Current UI: NEXIS · Tuxedo is installed in your top KDE panel.** The cat is always visible; idle shows clock/date, music shows the track title and headphones, agent work shows typing, and combined activity shows both. Response completion appears for four seconds. Click the panel pet to open controls. See [panel usage and installation](docs/PANEL.md).
+**Current UI: NEXIS is a notch attached to the center of the screen's top edge, overlapping the KDE panel.** It is a separate Wayland overlay that ignores the panel's reserved area. The notch (72 px high by default) fits the longest visible line using the rendered font, plus its artwork, cat, pulse and padding. Its maximum is 60% of the selected screen width; text elides only at that budget. Music shows local album artwork, the track title, Tuxedo and a playback pulse; pause stops the pulse. Without a valid track (including missing/unknown metadata or stopped playback), the notch shows the clock while the cat can keep typing for active agents. Agent completion briefly appears for four seconds; ongoing work does not replace the clock or music. Every expansion opens Music. Navigation contains Music, Agents and System; activity-log views are removed and event history is off by default. The optional [embedded panel widget](docs/PANEL.md) is retained but is not the current display mode.
 
 ![Tuxedo states](docs/tuxedo-states.png)
 
@@ -8,7 +8,7 @@ A native Qt6 desktop activity island for KDE Plasma Wayland. Music, Claude Code,
 
 ![NEXIS preview — explicit demo data](docs/nexis-preview.png)
 
-The default appearance follows your KDE colors, font and icon theme. This build was developed against **Orchis Dark, Tela Circle Dark, Plasma 6.7.5 and Qt 6.10.3 on Fedora 43**. It is real desktop software, with an explicitly labeled, isolated demo mode.
+Fold follows KDE brightness and font settings with its own restrained palette. This build was developed against **Orchis Dark, Tela Circle Dark, Plasma 6.7.5 and Qt 6.10.3 on Fedora 43**. It is real desktop software, with an explicitly labeled, isolated demo mode.
 
 ## Build and standalone preview
 
@@ -42,7 +42,7 @@ Useful commands:
 ./build/nexis --windowed                    # fallback when layer-shell is unavailable
 ```
 
-Only one live instance and one isolated demo may run at a time. Click to expand; Escape or focus loss collapses. Drag the capsule to move it. Settings include desktop/light/dark themes, reduced motion, optional 350 ms hover expansion, display/offset selection, middle-click behavior, fullscreen overlay, activity pinning and memory-only history. There is no global keyboard shortcut by default.
+Only one live instance and one isolated demo may run at a time. Click to open Music; Escape or focus loss collapses. The notch stays attached to the top edge. Settings include desktop/light/dark themes, collapsed notch height (48–120 px, saved immediately), reduced motion, optional 350 ms hover expansion, display/horizontal-offset selection, middle-click behavior, fullscreen overlay and activity pinning. Activity-log views are removed and history is off by default. There is no global keyboard shortcut by default.
 
 ### Ubuntu 24.04
 
@@ -53,7 +53,7 @@ build-essential cmake python3 dbus qt6-base-dev qt6-declarative-dev
 qt6-declarative-dev-tools qt6-wayland qml6-module-qtquick
 qml6-module-qtquick-window qml6-module-qtquick-controls
 qml6-module-qtquick-layouts qml6-module-qtquick-templates
-qml6-module-qtqml-workerscript
+qml6-module-qtqml-workerscript qml6-module-qtquick-shapes
 ```
 
 Ubuntu 24.04's [liblayershellqtinterface-dev](https://packages.ubuntu.com/noble/liblayershellqtinterface-dev) is a **Qt5 / Plasma 5.27 package**, so it cannot supply NEXIS's Qt6 layer-shell integration. A Plasma 6 distribution or a separately provided Qt6 LayerShellQt **6.7+** is required for the tested anchored Wayland behavior. Without it, NEXIS builds a regular floating Qt window, with compositor-dependent positioning. Ubuntu builds have not been run on this Fedora host. Audio actions additionally require WirePlumber's `wpctl`; network and battery use NetworkManager and UPower.
@@ -119,4 +119,4 @@ python3 scripts/benchmark.py --duration 600 --output docs/benchmark-idle.json
 
 Tests cover both provider state machines, redaction, parallel sessions, stale/replayed events, reversible settings merges, real Unix-socket ingestion, fail-open bridge behavior, two isolated MPRIS players and reconnect, job validation, priority, per-screen fullscreen state, and QML click/Escape/reduced-motion behavior. Isolated test players never enter the user's live bus.
 
-See [verification](docs/VERIFICATION.md), [privacy](docs/PRIVACY.md) and [known limitations](docs/KNOWN_LIMITATIONS.md). Optional notification/download bridges and advanced sensors are unavailable in this release. The original technical spec is retained; the user's correction to target the **new Qoder app** takes precedence over its IDE-specific text.
+See [verification](docs/VERIFICATION.md), [privacy](docs/PRIVACY.md) and [known limitations](docs/KNOWN_LIMITATIONS.md). KDE desktop notifications are mirrored through its watcher interface; Plasma retains ownership and may still show its own banners. Download bridges and advanced sensors remain unavailable. The original technical spec is retained; the user's correction to target the **new Qoder app** takes precedence over its IDE-specific text.

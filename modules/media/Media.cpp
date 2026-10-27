@@ -25,6 +25,7 @@ QVariantMap mediaSnapshot(const QVariantMap &p) {
     out["duration"] = meta.value("mpris:length", 0).toLongLong();
     out["position"] = p.value("Position", 0).toLongLong();
     out["playing"] = p.value("PlaybackStatus") == "Playing";
+    out["playbackStatus"] = p.value("PlaybackStatus").toString().left(16);
     out["art"] = QString();
     const QUrl art(meta.value("mpris:artUrl").toString());
     if (art.isLocalFile() && art.toString().size() <= 2048) {

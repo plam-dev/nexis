@@ -4,6 +4,7 @@
 #include "Settings.h"
 #include "modules/agents/Events.h"
 #include "modules/media/Media.h"
+#include "modules/notifications/Notifications.h"
 #include "modules/system/System.h"
 #include <QDBusVariant>
 #include <QObject>
@@ -15,6 +16,7 @@ class Backend : public QObject {
     Q_PROPERTY(QVariantList sessions READ sessions NOTIFY changed)
     Q_PROPERTY(QVariantList history READ history NOTIFY changed)
     Q_PROPERTY(QVariantList jobs READ jobs NOTIFY changed)
+    Q_PROPERTY(QVariantList notifications READ notifications NOTIFY changed)
     Q_PROPERTY(QVariantMap primary READ primary NOTIFY changed)
     Q_PROPERTY(QVariantMap presentation READ presentationState NOTIFY changed)
     Q_PROPERTY(QVariantList health READ health NOTIFY changed)
@@ -25,6 +27,7 @@ class Backend : public QObject {
     QVariantList sessions() const { return m_registry.sessions(); }
     QVariantList history() const;
     QVariantList jobs() const { return m_jobs.list(); }
+    QVariantList notifications() const { return m_notifications.list(); }
     QVariantMap primary() const;
     QVariantMap presentationState() const;
     QVariantList health() const;
@@ -32,6 +35,11 @@ class Backend : public QObject {
     bool demo() const { return m_demo; }
     void ingest(const QJsonObject &event);
     Q_INVOKABLE void clearHistory();
+    Q_INVOKABLE void dismissNotification(uint id);
+    Q_INVOKABLE void openNotification(uint id);
+    Q_INVOKABLE bool action(const QString &name, const QVariant &value = QVariant()) {
+        return PanelAction(name, QDBusVariant(value));
+    }
     Q_INVOKABLE void expanded(bool value);
     Q_INVOKABLE void quit();
     Q_INVOKABLE void drag(bool active);
@@ -50,6 +58,7 @@ class Backend : public QObject {
     Jobs m_jobs;
     QVariantList m_jobHistory;
     Registry m_registry;
+    Notifications m_notifications;
     Settings *m_settings;
     Media *m_media;
     System *m_system;

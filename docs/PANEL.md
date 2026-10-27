@@ -1,22 +1,28 @@
-# NEXIS · Tuxedo panel companion
+# NEXIS · Optional Fold panel widget
 
-This is the user-approved replacement for the agent-heavy standalone capsule: a real Plasma 6 widget embedded between the existing top panel's central spacers.
+The current display mode is a standalone Fold island floating over the top panel, managed by `nexis.service`. The embedded widget and its headless `nexis-panel.service` are disabled on this machine. They remain an optional alternative; running the panel installer below switches back to that mode.
+
+Fold keeps the capsule content centered with symmetric padding and derives its width from the current title, subtitle, artwork, cat and pulse. Long titles elide at the width limit. The expanded player follows its content height and scrolls within the screen when notices or activity would exceed it. Music uses a 30 px compact thumbnail (bounded by panel height), a 48 px expanded thumbnail, icon playback controls and a quiet playback-state pulse. Pause, reduced motion, hidden/minimized windows and hidden items stop the pulse; the cat also sleeps when its window is hidden.
+
+Incoming KDE notifications briefly replace the capsule text for five seconds, while preserving the cat's working/listening state. Permission and critical-battery alerts stay higher priority. Click the capsule to see notification details alongside music, or open Activity. Up to three notices are shown at a time; older notices remain accessible in Plasma's own history. Dismiss removes the island copy; Open invokes the advertised default action. Plasma retains ownership and may also show its own banner. DND prevents island previews. No notification content is persisted.
 
 | State | Text | Pet |
 |---|---|---|
 | Idle | Clock + date | Resting tuxedo, occasional blink |
 | Agent processing | Working | Typing at laptop |
 | Music playing | Current track title (Music if unavailable) | Headphones, gentle head bob |
+| Music paused | Track title and artwork, static pulse | Resting unless an agent is working |
+| Desktop notification | Summary and sending app for 5 seconds | Preserves current work/music pose |
 | Music and processing | Current track title (Music if unavailable) | Headphones and typing together |
 | Agent response completes | Claude Code / Qoder · Done for 4 seconds | Continues any remaining work/music pose |
 | Permission / critical | Clear attention message | Keeps listening; only types if another session is processing |
 
 The cat always exists. Source/project names stay in the popup during ordinary activity. A completed response never claims the entire session or project has ended. Completion expiry uses its own timestamp, so later notifications do not restart the banner.
 
-## Installed layout
+## Previous embedded layout
 
-Installed for the current user:
-- Widget: `org.nexis.panel`, instance 230 in top panel 200 at index 3.
+Before switching to the floating island:
+- Widget: `org.nexis.panel`, instance 230 in top panel 200 at index 3 (removed for floating mode).
 - It sits between preexisting spacers 203 and 225; launcher, window title, system tray, panel colorizer and bottom dock remain.
 - Runtime: `~/.local/bin/nexis --headless`, managed by `nexis-panel.service`.
 - Panel package: `~/.local/share/plasma/plasmoids/org.nexis.panel`.

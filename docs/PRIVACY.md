@@ -6,6 +6,8 @@ The bridge parses at most 64 KiB of vendor JSON. It constructs a new event objec
 
 No raw event is logged by default. Rejected events are dropped silently. Default history is bounded and stored only in memory, with a user-visible clear/off switch. Restart drops all sessions and history; nothing is invented as live following restart. Settings contain appearance and interaction preferences, never prompts or source code.
 
+KDE desktop notifications are received from the current notification daemon through its watcher interface. Up to 20 summaries and bodies are kept in memory and included in the same-user desktop snapshot. Markup is converted to bounded plain text without loading external resources. No notification content is written to disk or logged. DND suppresses capsule previews; old suppressed previews are not replayed. Demo mode never registers the notification watcher.
+
 Hook settings backups preserve the complete original config and may contain secrets already in that config. They are created with mode 0600 beside the settings file. The dry-run diff displays only NEXIS-owned handler changes. Atomic settings replacement preserves the existing file mode; malformed files and symlinks are refused. A lock serializes NEXIS installers, and a final byte comparison detects many external edits; a third-party writer ignoring locks can still race the final atomic replacement.
 
 Stdin has a 35 ms deadline, local connect 20 ms and write 20 ms. The bridge always returns exit code zero with no stdout, including invalid data and absent collectors. It never emits decision JSON or grants/denies permission. OS scheduling/startup can increase wall-clock duration; timings are measured, not hard real-time guarantees.
