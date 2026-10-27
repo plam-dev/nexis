@@ -1,0 +1,12 @@
+{
+  "platform": "Linux-7.2.7-100.fc43.x86_64-x86_64-with-glibc2.42",
+  "mode": "Native Wayland capsule, no injected events; shell and collector share one process",
+  "duration_seconds": 600.0,
+  "cpu_percent_one_core": 0.06,
+  "rss_mean_mib": 177.25,
+  "rss_peak_mib": 198.61,
+  "animation_fps": null,
+  "ui_event_p95_ms": null,
+  "limitations": "CPU/RSS include the combined UI/collector process, not GPU allocations or KWin helper cost. FPS and accepted-event-to-render latency need frame instrumentation.",
+  "revision_note": "Initial integrated build before final review and layer-shell initialization fixes; not a final-release acceptance measurement."
+}

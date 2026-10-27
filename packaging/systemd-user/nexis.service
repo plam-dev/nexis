@@ -1,0 +1,14 @@
+[Unit]
+Description=NEXIS desktop activity island
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/nexis
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=graphical-session.target

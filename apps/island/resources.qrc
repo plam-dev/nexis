@@ -1,0 +1,1 @@
+<RCC><qresource prefix="/nexis"><file>Main.qml</file><file alias="TuxedoCat.qml">../../ui/TuxedoCat.qml</file><file alias="CompactActivity.qml">../../ui/CompactActivity.qml</file></qresource></RCC>

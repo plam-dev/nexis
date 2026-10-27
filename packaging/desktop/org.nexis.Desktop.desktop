@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=NEXIS
+Comment=Quiet desktop activity, music and agent sessions
+Exec=nexis
+Icon=org.nexis.Desktop
+Terminal=false
+Categories=Utility;
+StartupNotify=false

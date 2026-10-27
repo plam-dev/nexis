@@ -1,0 +1,14 @@
+[Unit]
+Description=NEXIS panel companion activity collector
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/nexis --headless
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=graphical-session.target

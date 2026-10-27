@@ -1,0 +1,15 @@
+{
+  "KPlugin": {
+    "Id": "org.nexis.panel",
+    "Name": "NEXIS · Tuxedo",
+    "Description": "Your tuxedo companion, clock, music and desktop activity",
+    "Icon": "face-smile",
+    "Category": "Utilities",
+    "License": "MIT",
+    "Version": "0.2.0",
+    "Authors": [{"Name": "NEXIS"}]
+  },
+  "KPackageStructure": "Plasma/Applet",
+  "X-Plasma-API-Minimum-Version": "6.0",
+  "X-Plasma-NotificationArea": false
+}

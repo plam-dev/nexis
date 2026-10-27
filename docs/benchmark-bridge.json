@@ -1,0 +1,8 @@
+{
+  "samples_per_case": 50,
+  "healthy_bridge_p95_ms": 16.794,
+  "absent_collector_bridge_p95_ms": 16.797,
+  "event_to_snapshot_roundtrip_p95_ms": 44.149,
+  "rendered_ui_latency_ms": null,
+  "notes": "Private session D-Bus and temporary runtime; includes process startup and snapshot query overhead. No events enter the live island. Not event-to-frame latency."
+}
