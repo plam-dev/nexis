@@ -10,6 +10,7 @@ Item {
     property var track: ({})
     property bool reducedMotion: false
     property bool showIdleClock: false
+    property string petKind: "tuxedo"
     property date currentTime: new Date()
     property color foreground: "#dfdfdf"
     property color muted: "#aaaaaa"
@@ -36,7 +37,7 @@ Item {
     readonly property real textWidth: Math.max(0, Math.min(naturalTextWidth, maximumWidth - chromeWidth))
     implicitWidth: Math.min(maximumWidth, chromeWidth + naturalTextWidth)
     Accessible.role: Accessible.Button
-    Accessible.name: (displayText ? displayText + ". " : "") + pet.Accessible.name
+    Accessible.name: (displayText ? displayText + ". " : "") + (petKind === "tabby" ? tabby : pet).Accessible.name
     onClockVisibleChanged: if (clockVisible) currentTime = new Date()
     Timer {
         interval: 1000
@@ -102,16 +103,30 @@ Item {
                 contentItem: Item { implicitHeight: 3; Rectangle { width: feedbackProgress.visualPosition * parent.width; height: parent.height; radius: 2; color: compact.accent } }
             }
         }
-        TuxedoCat {
-            id: pet
+        Item {
+            id: pets
             Layout.preferredWidth: compact.petWidth
             Layout.minimumWidth: compact.petWidth
             Layout.maximumWidth: compact.petWidth
             Layout.preferredHeight: Math.min(38, compact.height || compact.implicitHeight)
-            working: !!compact.activity.working
-            listening: !!compact.activity.listening
-            reducedMotion: compact.reducedMotion
-            accent: compact.accent
+            TuxedoCat {
+                id: pet
+                anchors.fill: parent
+                visible: compact.petKind !== "tabby"
+                working: !!compact.activity.working
+                listening: !!compact.activity.listening
+                reducedMotion: compact.reducedMotion
+                accent: compact.accent
+            }
+            TabbyCat {
+                id: tabby
+                anchors.fill: parent
+                visible: compact.petKind === "tabby"
+                working: !!compact.activity.working
+                listening: !!compact.activity.listening
+                reducedMotion: compact.reducedMotion
+                accent: compact.accent
+            }
         }
         PlaybackPulse {
             objectName: "playbackPulse"

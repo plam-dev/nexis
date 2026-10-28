@@ -442,6 +442,54 @@ CompactActivity {
         QVERIFY(other.isActive());
         settings.set("hoverExpand", false);
     }
+    void expandedIslandShrinksWhenThePointerLeaves() {
+        Settings settings;
+        settings.set("reducedMotion", true);
+        settings.set("hoverExpand", false);
+        settings.set("autoShrink", true);
+        Media media;
+        System system;
+        Backend backend(&settings, &media, &system, false);
+        Compositor compositor;
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty("settings", &settings);
+        engine.rootContext()->setContextProperty("media", &media);
+        engine.rootContext()->setContextProperty("systemInfo", &system);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("compositor", &compositor);
+        engine.load(QUrl("qrc:/nexis/Main.qml"));
+        QVERIFY(!engine.rootObjects().isEmpty());
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        window->setProperty("ready", true);
+        window->show();
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        QTest::mouseMove(window, QPoint(80, 22));
+        window->setProperty("expanded", true);
+        QTest::qWait(900);
+        QVERIFY2(window->property("expanded").toBool(), "stays open while the pointer is over it");
+        QTest::mouseMove(window, QPoint(-40, -40));
+        QTRY_VERIFY_WITH_TIMEOUT(!window->property("expanded").toBool(), 2000);
+        settings.set("autoShrink", false);
+        QTest::mouseMove(window, QPoint(80, 22));
+        window->setProperty("expanded", true);
+        QTest::mouseMove(window, QPoint(-40, -40));
+        QTest::qWait(1200);
+        QVERIFY2(window->property("expanded").toBool(), "autoShrink off keeps it open");
+        settings.set("autoShrink", true);
+    }
+    void companionChoiceShowsExactlyOneCat() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine, QUrl("qrc:/nexis/CompactActivity.qml"));
+        QScopedPointer<QObject> object(component.create());
+        QVERIFY2(object, qPrintable(component.errorString()));
+        auto *tuxedo = object->findChild<QQuickItem *>("tuxedoCat");
+        auto *tabby = object->findChild<QQuickItem *>("tabbyCat");
+        QVERIFY(tuxedo && tabby);
+        QVERIFY(tuxedo->isVisible() && !tabby->isVisible());
+        object->setProperty("petKind", "tabby");
+        QVERIFY(!tuxedo->isVisible() && tabby->isVisible());
+        QVERIFY(object->property("petKind").toString() == "tabby");
+    }
     void capsuleRespondsToClickAndEscapeWithoutAnimation() {
         Settings settings;
         settings.set("idleClock", false);

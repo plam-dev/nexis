@@ -7,6 +7,7 @@
 #include "modules/notifications/Notifications.h"
 #include "modules/system/System.h"
 #include "modules/system/Osd.h"
+#include "modules/system/Monitor.h"
 #include <QDBusVariant>
 #include <QObject>
 #include <QPoint>
@@ -61,6 +62,7 @@ class Backend : public QObject {
     Registry m_registry;
     Notifications m_notifications;
     Osd m_osd;
+    Monitor m_monitor;
     Settings *m_settings;
     Media *m_media;
     System *m_system;

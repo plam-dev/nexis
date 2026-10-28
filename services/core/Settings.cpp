@@ -29,7 +29,9 @@ QVariantMap Settings::options() const {
                             {"screen", ""},
                             {"offsetX", 0},
                             {"offsetY", 0},
-                            {"history", false}};
+                            {"history", false},
+                            {"pet", "tuxedo"},
+                            {"autoShrink", true}};
     for (auto it = defaults.begin(); it != defaults.end(); ++it) {
         auto value = m_store.value(it.key(), it.value());
         // INI values can reload as strings; keep bool/number types at the QML/JSON boundary.
@@ -54,6 +56,8 @@ void Settings::set(const QString &k, const QVariant &v) {
     if (k == "theme" && !QStringList{"auto", "dark", "light"}.contains(v.toString()))
         return;
     if (k == "middleClick" && !QStringList{"media", "toggle", "none"}.contains(v.toString()))
+        return;
+    if (k == "pet" && !QStringList{"tuxedo", "tabby"}.contains(v.toString()))
         return;
     if (k == "pinned" && !QStringList{"", "media", "agents"}.contains(v.toString()))
         return;

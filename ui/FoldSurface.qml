@@ -15,6 +15,7 @@ Rectangle {
     property color muted: lightTheme ? "#5b6c83" : "#9daabe"
     property color accent: "#8bbcff"
     property color surface: "#242d3d"
+    property color attention: "#f5c16c"
     readonly property var track: snapshot.media || ({})
     readonly property var state: snapshot.presentation || ({})
     readonly property var sessions: snapshot.sessions || []
@@ -30,9 +31,27 @@ Rectangle {
     border.color: "#414b5b"
     border.width: embeddedNotch ? 0 : 1
     function time(us) { const s = Math.max(0, Math.floor((us || 0) / 1000000)); return Math.floor(s / 60) + ":" + (s % 60).toString().padStart(2, "0") }
+    function bytes(n) { n = n || 0; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; ++i } return n.toFixed(i > 2 ? 1 : 0) + " " + u[i] }
+    function pct(v) { return Math.max(0, Math.min(100, Math.round(v || 0))) }
     function provider(s) { return s.provider === "claude_code" ? "Claude Code" : "Qoder" }
     function status(s) { return ({running:"Processing",tool_running:"Using a tool",waiting_permission:"Permission needed",turn_complete:"Response complete",session_ended:"Session ended",stale:"No recent event",started:"Session started"})[s] || "Unknown" }
     component Caption: C.Label { textFormat: Text.PlainText; color: fold.muted; font.pixelSize: 11; elide: Text.ElideRight }
+    component Meter: ColumnLayout {
+        property string label
+        property string detail
+        property real value: 0
+        Layout.fillWidth: true
+        spacing: 3
+        RowLayout {
+            Layout.fillWidth: true
+            Caption { text: parent.parent.label; color: fold.foreground; Layout.fillWidth: true }
+            Caption { text: parent.parent.detail }
+        }
+        Rectangle {
+            Layout.fillWidth: true; height: 5; radius: 3; color: fold.muted; opacity: 0.25
+            Rectangle { width: parent.width * Math.max(0, Math.min(1, parent.parent.value / 100)); height: parent.height; radius: 3; color: parent.parent.value > 90 ? fold.attention : fold.accent }
+        }
+    }
     component SmallButton: C.Button {
         id: small
         property bool selected: false
@@ -69,7 +88,8 @@ Rectangle {
                 C.Label { Layout.fillWidth: true; text: fold.track.title || fold.state.title || "All quiet"; textFormat: Text.PlainText; color: fold.foreground; font.pixelSize: 17; font.weight: Font.DemiBold; elide: Text.ElideRight }
                 Caption { Layout.fillWidth: true; text: fold.track.artist || (fold.snapshot.demo ? "Preview data" : fold.track.identity || "Your desktop, together") }
             }
-            TuxedoCat { Layout.preferredWidth: 42; Layout.preferredHeight: 34; working: !!fold.state.working; listening: !!fold.state.listening; reducedMotion: fold.reducedMotion; accent: fold.accent }
+            TuxedoCat { visible: fold.options.pet !== "tabby"; Layout.preferredWidth: 42; Layout.preferredHeight: 34; working: !!fold.state.working; listening: !!fold.state.listening; reducedMotion: fold.reducedMotion; accent: fold.accent }
+            TabbyCat { visible: fold.options.pet === "tabby"; Layout.preferredWidth: 42; Layout.preferredHeight: 34; working: !!fold.state.working; listening: !!fold.state.listening; reducedMotion: fold.reducedMotion; accent: fold.accent }
             PlaybackPulse { visible: !!fold.track.service; playing: !!fold.track.playing; reducedMotion: fold.reducedMotion; color: fold.accent }
             SmallButton { text: "×"; implicitWidth: 24; Accessible.name: "Close island"; onClicked: fold.closeRequested() }
         }
@@ -203,6 +223,13 @@ Rectangle {
                     SmallButton { text: (fold.snapshot.system || {}).muted ? "Unmute" : "Mute"; enabled: !!(fold.snapshot.system || {}).volumeAvailable; onClicked: fold.action("mute", null) }
                 }
                 C.Slider { Layout.fillWidth: true; from: 0; to: 1; value: (fold.snapshot.system || {}).volume || 0; enabled: !!(fold.snapshot.system || {}).volumeAvailable; onMoved: fold.action("volume", value); Accessible.name: "System output volume" }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Caption { text: "Companion"; Layout.fillWidth: true }
+                    SmallButton { text: "Tuxedo"; selected: fold.options.pet !== "tabby"; onClicked: fold.action("pet", "tuxedo") }
+                    SmallButton { text: "Tabby"; selected: fold.options.pet === "tabby"; onClicked: fold.action("pet", "tabby") }
+                }
+                C.Switch { text: "Shrink when the pointer leaves"; checked: fold.options.autoShrink !== false; onToggled: fold.action("autoShrink", checked); contentItem: Caption { text: parent.text; leftPadding: 52; verticalAlignment: Text.AlignVCenter } }
                 C.Switch { text: "Reduced motion"; checked: fold.reducedMotion; onToggled: fold.action("reducedMotion", checked); contentItem: Caption { text: parent.text; leftPadding: 52; verticalAlignment: Text.AlignVCenter } }
                 C.Switch { text: "Show clock and date when idle"; checked: !!fold.options.idleClock; onToggled: fold.action("idleClock", checked); contentItem: Caption { text: parent.text; leftPadding: 52; verticalAlignment: Text.AlignVCenter } }
                 Repeater {
@@ -210,6 +237,42 @@ Rectangle {
                     delegate: Caption { required property var modelData; Layout.fillWidth: true; text: modelData.name + ": " + modelData.status; wrapMode: Text.WordWrap; elide: Text.ElideNone }
                 }
                 SmallButton { visible: fold.preferencesAvailable; text: "Preferences"; onClicked: fold.action("preferences", null) }
+            }
+        }
+        C.ScrollView {
+            visible: fold.section === 3
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(monitorLayout.implicitHeight, 300)
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                id: monitorLayout
+                objectName: "monitorLayout"
+                width: parent.width
+                spacing: 9
+                readonly property var mon: fold.snapshot.monitor || ({})
+                readonly property var mem: mon.memory || ({})
+                Caption { visible: !monitorLayout.mon.available; text: "Collecting system data…" }
+                Meter { label: "CPU"; value: monitorLayout.mon.cpu || 0; detail: fold.pct(monitorLayout.mon.cpu) + "%" }
+                Meter { label: "Memory"; value: monitorLayout.mem.total ? 100 * monitorLayout.mem.used / monitorLayout.mem.total : 0; detail: fold.bytes(monitorLayout.mem.used) + " / " + fold.bytes(monitorLayout.mem.total) }
+                Repeater {
+                    model: monitorLayout.mon.gpus || []
+                    delegate: Meter { required property var modelData; label: modelData.name; value: modelData.util || 0; detail: fold.pct(modelData.util) + "%" + (modelData.memTotal ? " · " + fold.bytes(modelData.memUsed) + " / " + fold.bytes(modelData.memTotal) : "") }
+                }
+                Repeater {
+                    model: monitorLayout.mon.storage || []
+                    delegate: Meter { required property var modelData; label: "Storage " + modelData.path; value: modelData.total ? 100 * modelData.used / modelData.total : 0; detail: fold.bytes(modelData.used) + " / " + fold.bytes(modelData.total) }
+                }
+                Caption { visible: (monitorLayout.mon.apps || []).length > 0; text: "Top applications"; color: fold.foreground; font.weight: Font.DemiBold; Layout.topMargin: 2 }
+                Repeater {
+                    model: monitorLayout.mon.apps || []
+                    delegate: RowLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        Caption { text: modelData.name; color: fold.foreground; Layout.fillWidth: true }
+                        Caption { text: fold.pct(modelData.cpu) + "% CPU · " + fold.bytes(modelData.mem) }
+                    }
+                }
             }
         }
         RowLayout {
@@ -223,7 +286,7 @@ Rectangle {
             Layout.fillWidth: true
             spacing: 2
             Repeater {
-                model: ["Music", "Agents", "System"]
+                model: ["Music", "Agents", "System", "Monitor"]
                 delegate: SmallButton { required property string modelData; required property int index; text: modelData; selected: fold.section === index; onClicked: fold.section = index }
             }
             Item { Layout.fillWidth: true }

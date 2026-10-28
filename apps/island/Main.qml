@@ -50,7 +50,18 @@ ApplicationWindow {
     Behavior on height { NumberAnimation { duration: island.motion ? 300 : 0; easing.type: Easing.OutCubic } }
     Shortcut { sequence: "Escape"; enabled: island.expanded; onActivated: island.expanded = false }
     Timer { id: dwell; interval: 350; onTriggered: if (hover.hovered && opts.hoverExpand) island.expanded = true }
-    HoverHandler { id: hover; onHoveredChanged: { if (hovered && opts.hoverExpand && !island.expanded) dwell.start(); else dwell.stop(); if (!hovered && opts.hoverExpand && !island.active) island.expanded = false } }
+    // Moving the pointer away from an open island folds it back into the notch after a short grace
+    // period; returning, an open settings page or a held mouse button (slider drag) cancels it.
+    Timer {
+        id: shrink
+        interval: 700
+        onTriggered: {
+            if (!island.expanded || hover.hovered || island.showSettings || !opts.autoShrink) return
+            if (press.active) restart(); else island.expanded = false
+        }
+    }
+    PointHandler { id: press; acceptedButtons: Qt.AllButtons; grabPermissions: PointerHandler.ApprovesTakeOverByAnything }
+    HoverHandler { id: hover; onHoveredChanged: { if (hovered && opts.hoverExpand && !island.expanded) dwell.start(); else dwell.stop(); if (hovered) shrink.stop(); else if (island.expanded && opts.autoShrink) shrink.start(); if (!hovered && opts.hoverExpand && !island.active) island.expanded = false } }
     TapHandler { acceptedButtons: Qt.MiddleButton; onTapped: if (opts.middleClick === "media" && track.service) media.control("PlayPause"); else if (opts.middleClick === "toggle") island.expanded = !island.expanded }
     background: NotchBackground { color: island.palette.window }
     Button {
@@ -66,7 +77,7 @@ ApplicationWindow {
         background: Item {}
         Accessible.name: "Expand: " + (compactFace.displayText || "Tuxedo cat")
         onClicked: { island.expanded = true; island.requestActivate() }
-        contentItem: CompactActivity { id: compactFace; maximumWidth: Math.max(0, island.maximumNotchWidth - 48); activity: island.compactState; track: island.track; showIdleClock: !!island.opts.idleClock; reducedMotion: !island.motion; foreground: island.palette.text; muted: island.colors.dark ? "#9daabe" : "#5b6c83"; accent: "#8bbcff" }
+        contentItem: CompactActivity { id: compactFace; maximumWidth: Math.max(0, island.maximumNotchWidth - 48); activity: island.compactState; track: island.track; showIdleClock: !!island.opts.idleClock; petKind: island.opts.pet || "tuxedo"; reducedMotion: !island.motion; foreground: island.palette.text; muted: island.colors.dark ? "#9daabe" : "#5b6c83"; accent: "#8bbcff" }
     }
     FoldSurface {
         id: fold
@@ -131,6 +142,14 @@ ApplicationWindow {
                     }
                     Label { text: "Height when collapsed. Default: 72 px."; color: island.colors.muted; font.pixelSize: 11 }
                     Switch { text: "Reduced motion"; checked: opts.reducedMotion; onToggled: settings.set("reducedMotion", checked) }
+                    Switch { text: "Shrink when the pointer leaves"; checked: opts.autoShrink; onToggled: settings.set("autoShrink", checked) }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        model: ["Companion: tuxedo", "Companion: tabby"]
+                        currentIndex: opts.pet === "tabby" ? 1 : 0
+                        onActivated: settings.set("pet", currentIndex === 1 ? "tabby" : "tuxedo")
+                        Accessible.name: "Companion cat"
+                    }
                     Switch { text: "Expand after hovering for 350 ms"; checked: opts.hoverExpand; onToggled: settings.set("hoverExpand", checked) }
                     Switch { text: "Show over fullscreen apps"; checked: opts.fullscreenOverlay; onToggled: settings.set("fullscreenOverlay", checked) }
                     ComboBox {

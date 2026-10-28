@@ -53,6 +53,16 @@ To stop the collector: `systemctl --user disable --now nexis-panel.service`. The
 
 `ui/TuxedoCat.qml` is original local pixel artwork drawn on a 40×28 grid. It has independent work/listen flags, bounded 8-frame motion, a 3.2-second idle breathing cycle with a low-frequency blink and occasional ear/tail movement, nearest-neighbor scaling and static reduced-motion poses. Hidden/minimized windows pause the animation. No downloaded asset, image-generation service, microphone or beat analysis is used.
 
+`ui/TabbyCat.qml` is a second, grey-brown tabby companion modelled on the maintainer's own cat, drawn on the same grid with the same pose and motion rules; choose between it and the tuxedo with the **Companion** control in the System tab or Preferences (one cat is shown at a time; the choice is the `pet` setting).
+
+## Auto-shrink
+
+When the pointer leaves an expanded island it folds back into the notch after 700 ms. Returning, a held mouse button (e.g. dragging a slider) or open Preferences cancels it. Disable with `autoShrink` (System tab or Preferences).
+
+## System Monitoring
+
+The fold's **Monitor** tab shows CPU, memory, each GPU (NVIDIA via `nvidia-smi`, AMD via sysfs), mounted storage and the five busiest applications. Sampling runs every 2 s only while the island is expanded. Applications are grouped by process name; only the name and numeric counters from `/proc` are read, never command lines. Nothing is written to disk or logged.
+
 Desktop feedback listens to the current `org.kde.plasmashell` owner's `org.kde.osdService` progress/text signals. Volume, screen/keyboard brightness and microphone levels show a percentage and bar; mute, Wi-Fi, Bluetooth and other native status events show short plain text. Each event restarts a three-second timer. Permission and critical-battery alerts retain priority; feedback otherwise temporarily takes the place of notifications/music, then restores the latest activity. Successful volume/mute changes made inside the island also use this banner. There is no startup banner or extra polling. Native Plasma OSD remains enabled and may appear too; disabling it also stops Plasma from emitting these signals.
 
 `CompactActivity.qml` is shared with the standalone preview. The widget inherits Kirigami/Plasma colors and the panel background, rather than drawing a second floating window. The D-Bus client is packaged as a private Qt plugin, coalesces signals, limits snapshots to 1 MiB and recovers when the collector restarts. There is no once-per-second process launch or shell command polling.

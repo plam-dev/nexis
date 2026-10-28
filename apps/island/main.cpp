@@ -254,6 +254,11 @@ int main(int argc, char **argv) {
         window->setProperty("ready", true);
         if (arguments.contains("--expanded"))
             QTimer::singleShot(100, window, [window] { window->setProperty("expanded", true); });
+        const auto tabArg = arguments.indexOf("--tab");
+        if (tabArg >= 0 && tabArg + 1 < arguments.size())
+            QTimer::singleShot(150, window, [window, tab = qBound(0, arguments[tabArg + 1].toInt(), 3)] {
+                window->setProperty("tab", tab);
+            });
         if (arguments.contains("--smoke-test")) {
             QTimer::singleShot(50, window, [window] { window->setProperty("expanded", true); });
             for (int tab = 0; tab < 4; ++tab)

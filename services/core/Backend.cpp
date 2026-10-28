@@ -10,12 +10,13 @@
 #include <algorithm>
 namespace Nexis {
 Backend::Backend(Settings *s, Media *m, System *sys, bool demo, QObject *p)
-    : QObject(p), m_notifications(!demo, this), m_osd(!demo, this), m_settings(s), m_media(m),
+    : QObject(p), m_notifications(!demo, this), m_osd(!demo, this), m_monitor(!demo, this), m_settings(s), m_media(m),
       m_system(sys), m_demo(demo) {
     connect(m, &Media::changed, this, &Backend::changed);
     connect(sys, &System::changed, this, &Backend::changed);
     connect(&m_notifications, &Notifications::changed, this, &Backend::changed);
     connect(&m_osd, &Osd::changed, this, &Backend::changed);
+    connect(&m_monitor, &Monitor::changed, this, &Backend::changed);
     connect(sys, &System::volumeFeedback, &m_osd, &Osd::volumeChanged);
     connect(s, &Settings::changed, this, [this] {
         if (!m_settings->options()["history"].toBool()) {
@@ -96,6 +97,7 @@ void Backend::expanded(bool value) {
     if (value && !m_expanded)
         m_frozen = primary().value("key").toString();
     m_expanded = value;
+    m_monitor.setActive(value);
     if (!value)
         m_frozen.clear();
     m_media->setExpanded(value);
@@ -312,9 +314,11 @@ bool Backend::PanelAction(const QString &action, const QDBusVariant &value) {
             dismissNotification(v.toUInt());
         else
             openNotification(v.toUInt());
-    } else if ((action == "reducedMotion" || action == "idleClock") &&
+    } else if ((action == "reducedMotion" || action == "idleClock" || action == "autoShrink") &&
                v.metaType() == QMetaType::fromType<bool>())
         m_settings->set(action, v.toBool());
+    else if (action == "pet" && v.metaType() == QMetaType::fromType<QString>())
+        m_settings->set(action, v.toString());
     else if (action == "expanded" && v.metaType() == QMetaType::fromType<bool>())
         expanded(v.toBool());
     else
@@ -333,6 +337,7 @@ QString Backend::Snapshot() const {
                         {"media", QJsonObject::fromVariantMap(m_media->current())},
                         {"players", QJsonArray::fromVariantList(m_media->players())},
                         {"system", QJsonObject::fromVariantMap(m_system->state())},
+                        {"monitor", QJsonObject::fromVariantMap(m_monitor.state())},
                         {"options", QJsonObject::fromVariantMap(m_settings->options())},
                         {"darkTheme", m_settings->colors()["dark"].toBool()},
                         {"health", QJsonArray::fromVariantList(health())},
