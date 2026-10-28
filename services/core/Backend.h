@@ -6,6 +6,7 @@
 #include "modules/media/Media.h"
 #include "modules/notifications/Notifications.h"
 #include "modules/system/System.h"
+#include "modules/system/Osd.h"
 #include <QDBusVariant>
 #include <QObject>
 #include <QPoint>
@@ -59,6 +60,7 @@ class Backend : public QObject {
     QVariantList m_jobHistory;
     Registry m_registry;
     Notifications m_notifications;
+    Osd m_osd;
     Settings *m_settings;
     Media *m_media;
     System *m_system;

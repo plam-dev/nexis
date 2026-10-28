@@ -247,6 +247,66 @@ CompactActivity {
         QVERIFY(!first.isNull());
         QTRY_VERIFY(window.grabWindow() != first);
     }
+    void idlePetBreathesAndStopsWhenHiddenOrReduced() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine, QUrl("qrc:/nexis/TuxedoCat.qml"));
+        QScopedPointer<QObject> object(component.create());
+        QVERIFY2(object, qPrintable(component.errorString()));
+        auto *item = qobject_cast<QQuickItem *>(object.data());
+        QVERIFY(item);
+        QQuickWindow window;
+        item->setParentItem(window.contentItem());
+        item->setSize(QSizeF(116, 72));
+        window.resize(116, 72);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QTest::qWait(50);
+        QCOMPARE(object->property("pose").toString(), QString("idle"));
+        const auto resting = window.grabWindow();
+        QVERIFY(!resting.isNull());
+        // A breath must be visible well before the occasional 5.2-second blink.
+        QTRY_VERIFY_WITH_TIMEOUT(window.grabWindow() != resting, 1800);
+        QVERIFY(!object->property("blinking").toBool());
+        window.hide();
+        const auto hiddenFrame = object->property("frame").toInt();
+        QTest::qWait(900);
+        QCOMPARE(object->property("frame").toInt(), hiddenFrame);
+        window.show();
+        QTRY_VERIFY(object->property("frame").toInt() != hiddenFrame);
+        object->setProperty("reducedMotion", true);
+        QTest::qWait(50);
+        const auto reduced = window.grabWindow();
+        QTest::qWait(900);
+        QCOMPARE(window.grabWindow(), reduced);
+        object->setProperty("reducedMotion", false);
+        QTRY_VERIFY_WITH_TIMEOUT(window.grabWindow() != reduced, 1800);
+    }
+    void idlePetOccasionallyMovesItsEarsAndTail() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine, QUrl("qrc:/nexis/TuxedoCat.qml"));
+        QScopedPointer<QObject> object(component.create());
+        QVERIFY2(object, qPrintable(component.errorString()));
+        auto *item = qobject_cast<QQuickItem *>(object.data());
+        QQuickWindow window;
+        item->setParentItem(window.contentItem());
+        item->setSize(QSizeF(160, 112));
+        window.resize(160, 112);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        auto capture = [&](int cycle) {
+            object->setProperty("idleCycle", cycle);
+            object->setProperty("frame", 3);
+            QMetaObject::invokeMethod(item->childItems().first(), "requestPaint");
+            QTest::qWait(30);
+            return window.grabWindow();
+        };
+        const auto resting = capture(0);
+        QVERIFY(!resting.isNull());
+        QVERIFY(capture(1) != resting);
+        QVERIFY(capture(3) != resting);
+        object->setProperty("reducedMotion", true);
+        QCOMPARE(capture(1), capture(3));
+    }
     void persistentPetCombinesStatesAndHonorsReducedMotion() {
         QQmlEngine engine;
         QQmlComponent component(&engine, QUrl("qrc:/nexis/CompactActivity.qml"));
@@ -264,13 +324,16 @@ CompactActivity {
         auto *pet = object->findChild<QObject *>("tuxedoCat");
         QVERIFY(pet);
         QVERIFY(pet->property("visible").toBool());
-        QVERIFY(object->property("displayText").toString().contains(":"));
-        QVERIFY(object->property("displayText").toString().contains(" · "));
+        QVERIFY(object->property("displayText").toString().isEmpty());
+        QVERIFY(item->implicitWidth() < 120);
+        QVERIFY(!object->findChild<QQuickItem *>("activityText")->isVisible());
+        const auto idleWidth = item->implicitWidth();
+        auto *content = object->findChild<QQuickItem *>("capsuleContent");
+        QVERIFY(content);
+        QTRY_VERIFY(qAbs(content->x() + content->width() / 2 - item->width() / 2) < 1);
         object->setProperty("activity", presentation(
             {QVariantMap{{"status", "running"}}}, {}, {}, 10000));
-        QCOMPARE(object->property("displayText").toString(),
-                 object->property("clockText").toString() + " · " +
-                     object->property("dateText").toString());
+        QVERIFY(object->property("displayText").toString().isEmpty());
         QCOMPARE(pet->property("pose").toString(), QString("typing"));
         const auto typingFrame = pet->property("frame").toInt();
         QTRY_VERIFY(pet->property("frame").toInt() != typingFrame);
@@ -292,6 +355,35 @@ CompactActivity {
         QTest::qWait(220);
         QCOMPARE(pet->property("frame").toInt(), 0);
         QVERIFY(pet->property("visible").toBool());
+        object->setProperty("activity", QVariantMap{{"mode", "feedback"},
+                                                    {"title", "Brightness · 40%"},
+                                                    {"progress", 0.4}});
+        QCOMPARE(object->property("displayText").toString(), QString("Brightness · 40%"));
+        auto *progress = object->findChild<QQuickItem *>("feedbackProgress");
+        QVERIFY(progress);
+        QTRY_VERIFY(progress->isVisible());
+        QCOMPARE(progress->property("value").toDouble(), 0.4);
+        QVERIFY(item->implicitWidth() > idleWidth);
+        object->setProperty("activity", QVariantMap{{"mode", "feedback"}, {"title", "Audio Muted"}});
+        QVERIFY(!progress->isVisible());
+        object->setProperty("activity", QVariantMap{{"mode", "idle"}});
+        QCOMPARE(item->implicitWidth(), idleWidth);
+        QVERIFY(!progress->isVisible());
+        QVERIFY(!object->findChild<QQuickItem *>("activityText")->isVisible());
+        object->setProperty("showIdleClock", true);
+        object->setProperty("currentTime", QDateTime(QDate(2026, 10, 28), QTime(9, 7)));
+        QVERIFY(object->property("displayText").toString().startsWith("09:07 · "));
+        QVERIFY(object->findChild<QQuickItem *>("activityText")->isVisible());
+        QVERIFY(object->findChild<QQuickItem *>("subtitleText")->isVisible());
+        QVERIFY(item->implicitWidth() > idleWidth);
+        object->setProperty("activity", QVariantMap{{"mode", "feedback"},
+                                                    {"title", "Volume · 60%"}, {"progress", 0.6}});
+        QCOMPARE(object->property("displayText").toString(), QString("Volume · 60%"));
+        object->setProperty("activity", QVariantMap{{"mode", "idle"}});
+        QVERIFY(!object->property("displayText").toString().isEmpty());
+        object->setProperty("showIdleClock", false);
+        QVERIFY(object->property("displayText").toString().isEmpty());
+        QCOMPARE(item->implicitWidth(), idleWidth);
     }
     void mediaTextCannotMakeNetworkRequests() {
         QTcpServer server;
@@ -352,6 +444,7 @@ CompactActivity {
     }
     void capsuleRespondsToClickAndEscapeWithoutAnimation() {
         Settings settings;
+        settings.set("idleClock", false);
         settings.set("reducedMotion", true);
         settings.set("hoverExpand", false);
         Media media;
@@ -373,6 +466,19 @@ CompactActivity {
         window->show();
         QVERIFY(QTest::qWaitForWindowExposed(window));
         QVERIFY(!window->property("expanded").toBool());
+        auto *compact = window->findChild<QObject *>("compactActivity");
+        QVERIFY(compact);
+        QVERIFY(compact->property("displayText").toString().isEmpty());
+        auto *clockSwitch = window->findChild<QObject *>("idleClockSwitch");
+        QVERIFY(clockSwitch);
+        clockSwitch->setProperty("checked", true);
+        QVERIFY(QMetaObject::invokeMethod(clockSwitch, "toggled"));
+        QTRY_VERIFY(!compact->property("displayText").toString().isEmpty());
+        Settings reloaded;
+        QVERIFY(reloaded.options()["idleClock"].toBool());
+        clockSwitch->setProperty("checked", false);
+        QVERIFY(QMetaObject::invokeMethod(clockSwitch, "toggled"));
+        QTRY_VERIFY(compact->property("displayText").toString().isEmpty());
         settings.set("notchHeight", 96);
         QCOMPARE(window->height(), 96);
         settings.set("notchHeight", 48);

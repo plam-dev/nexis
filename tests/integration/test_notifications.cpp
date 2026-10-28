@@ -177,6 +177,22 @@ class NotificationTest : public QObject {
         QVERIFY(!backend.PanelAction("openNotification", QDBusVariant(true)));
         QCOMPARE(daemon.invoked, 0);
     }
+    void observingTheSameOwnerTwiceDoesNotRegisterAgain() {
+        Backend backend(&settings, &media, &system, false);
+        QTRY_COMPARE(notificationHealth(backend), QString("Connected"));
+        const auto registrations = daemon.registrations;
+        auto *watcher = backend.findChild<Notifications *>();
+        QVERIFY(watcher);
+        // Startup discovery and NameOwnerChanged can observe the same daemon.
+        QVERIFY(QMetaObject::invokeMethod(watcher, "ownerChanged",
+                                          Q_ARG(QString, service), Q_ARG(QString, QString()),
+                                          Q_ARG(QString, daemon.bus.baseService())));
+        QTest::qWait(80);
+        QCOMPARE(daemon.registrations, registrations);
+        daemon.notify(42, "Still connected");
+        QTRY_COMPARE(notifications(backend).size(), 1);
+        QCOMPARE(notifications(backend).first().toObject()["id"].toInt(), 42);
+    }
     void bannerExpiresButExpandedContentRemainsAndPermissionWins() {
         Backend backend(&settings, &media, &system, false);
         QTRY_COMPARE(daemon.registrations, 1);

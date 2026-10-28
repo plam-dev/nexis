@@ -23,8 +23,8 @@ class TransportTest(unittest.TestCase):
             self.daemon.communicate(timeout=3)
         self.temp.cleanup()
 
-    def bridge(self, event):
-        return subprocess.run([BRIDGE, '--provider', 'qoder'], input=json.dumps(event).encode(), env=self.env, capture_output=True, timeout=1)
+    def bridge(self, event, provider='qoder'):
+        return subprocess.run([BRIDGE, '--provider', provider], input=json.dumps(event).encode(), env=self.env, capture_output=True, timeout=1)
 
     def start(self):
         self.daemon = subprocess.Popen([APP, '--headless'], env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -89,5 +89,37 @@ class TransportTest(unittest.TestCase):
         self.assertEqual(client.recv(1), b'')
         client.close()
         self.assertEqual(self.bridge({'hook_event_name': 'Stop', 'session_id': 'valid'}).returncode, 0)
+
+    def test_claude_permission_resolves_across_directory_changes(self):
+        self.start()
+        base = {'session_id': 'claude-one', 'cwd': '/work/project', 'tool_name': 'Bash',
+                'tool_input': {'command': 'echo TOPSECRET'}}
+        for completion in ('PostToolUse', 'PostToolUseFailure'):
+            with self.subTest(completion=completion):
+                for name, cwd, tool_id, status in (
+                    ('PreToolUse', '/work/project', 'tool-one', 'tool_running'),
+                    ('PermissionRequest', '/work/project', None, 'waiting_permission'),
+                    (completion, '/work/project/dist', 'tool-one', 'running'),
+                    ('Stop', '/work/project/dist', None, 'turn_complete'),
+                ):
+                    raw = {**base, 'hook_event_name': name, 'cwd': cwd}
+                    if tool_id:
+                        raw['tool_use_id'] = tool_id
+                    result = self.bridge(raw, provider='claude')
+                    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, b'', b''))
+                    for _ in range(40):
+                        snapshot = self.snapshot()
+                        sessions = snapshot['sessions']
+                        if len(sessions) == 1 and sessions[0]['lastEvent'] == name:
+                            break
+                        time.sleep(0.01)
+                    self.assertEqual(len(sessions), 1)
+                    self.assertEqual(sessions[0]['status'], status)
+                    if name == 'PermissionRequest':
+                        self.assertEqual(snapshot['presentation']['status'], 'waiting_permission')
+                    else:
+                        self.assertNotEqual(snapshot['presentation']['status'], 'waiting_permission')
+                    self.assertNotIn('TOPSECRET', json.dumps(snapshot))
+                self.assertEqual(snapshot['presentation']['status'], 'turn_complete')
 
 if __name__ == '__main__': unittest.main()

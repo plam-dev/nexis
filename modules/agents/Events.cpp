@@ -77,13 +77,18 @@ QJsonObject normalize(const QJsonObject &raw, const QString &provider) {
         out["subagent_id"] = hash(raw["agent_id"].toString());
     if (!raw["tool_use_id"].toString().isEmpty())
         out["tool_id"] = hash(raw["tool_use_id"].toString());
+    if (!raw["tool_name"].toString().isEmpty() && raw["tool_input"].isObject())
+        out["tool_fingerprint"] =
+            hash(QString::fromUtf8(QJsonDocument(QJsonObject{{"tool_name", raw["tool_name"]},
+                                                             {"tool_input", raw["tool_input"]}})
+                                       .toJson(QJsonDocument::Compact)));
     return out;
 }
 bool Registry::accept(const QJsonObject &e) {
     static const QSet<QString> keys = {
-        "schema_version", "event_id",      "provider",   "source_event", "session_id",
-        "project_id",     "project_label", "confidence", "status",       "tool_kind",
-        "occurred_at",    "subagent_id",   "tool_id"};
+        "schema_version", "event_id",      "provider",   "source_event",    "session_id",
+        "project_id",     "project_label", "confidence", "status",          "tool_kind",
+        "occurred_at",    "subagent_id",   "tool_id",    "tool_fingerprint"};
     if (QJsonDocument(e).toJson(QJsonDocument::Compact).size() > 16384 ||
         e["schema_version"].toInt() != 1)
         return false;
@@ -101,7 +106,7 @@ bool Registry::accept(const QJsonObject &e) {
     for (auto field : {"session_id", "project_id"})
         if (!hex.match(e[field].toString()).hasMatch())
             return false;
-    for (auto field : {"subagent_id", "tool_id"})
+    for (auto field : {"subagent_id", "tool_id", "tool_fingerprint"})
         if (e.contains(field) && !hex.match(e[field].toString()).hasMatch())
             return false;
     if (e["confidence"] != "observed" && e["confidence"] != "limited")
@@ -119,7 +124,10 @@ bool Registry::accept(const QJsonObject &e) {
     if (!time.isValid() || time.toMSecsSinceEpoch() > now + 300000 ||
         time.toMSecsSinceEpoch() < now - 24 * 3600000)
         return false;
-    const auto key = provider + ":" + e["project_id"].toString() + ":" + e["session_id"].toString();
+    // Claude's cwd can change within a session; it is context, not session identity.
+    const auto key = provider + ":" +
+                     (provider == "claude_code" ? QString() : e["project_id"].toString() + ":") +
+                     e["session_id"].toString();
     auto s = m_sessions.value(key);
     if (time.toMSecsSinceEpoch() < s.value("source_ms", 0).toLongLong())
         return false;
@@ -167,15 +175,22 @@ bool Registry::accept(const QJsonObject &e) {
         if (e.contains("subagent_id"))
             m_agents[key].remove(e["subagent_id"].toString());
     } else if (name == "PermissionRequest") {
-        insertBounded(m_permissions[key], toolId);
+        // Claude omits tool_use_id here; correlate without forwarding tool arguments.
+        const auto permissionId = !e.contains("tool_id") && e.contains("tool_fingerprint")
+                                      ? "call:" + e["tool_fingerprint"].toString()
+                                      : toolId;
+        insertBounded(m_permissions[key], permissionId);
         s["status"] = "waiting_permission";
     } else if (name == "PreToolUse" || name == "PostToolUse" || name == "PostToolUseFailure") {
         if (name == "PreToolUse") {
             insertBounded(m_tools[key], toolId);
             s["tool"] = e["tool_kind"].toString();
-        } else
+        } else {
             m_tools[key].remove(toolId);
-        m_permissions[key].remove(toolId);
+            m_permissions[key].remove(toolId);
+            if (e.contains("tool_fingerprint"))
+                m_permissions[key].remove("call:" + e["tool_fingerprint"].toString());
+        }
         s["status"] = !m_permissions[key].isEmpty() ? "waiting_permission"
                       : !m_tools[key].isEmpty()     ? "tool_running"
                                                     : "running";

@@ -79,6 +79,7 @@ void System::runAudio(const QStringList &args, bool read) {
     connect(p, &QProcess::errorOccurred, this, [this, p](QProcess::ProcessError e) {
         if (e == QProcess::FailedToStart) {
             m_audioBusy = false;
+            m_volumeFeedbackPending = false;
             m_state["volumeAvailable"] = false;
             emit changed();
             p->deleteLater();
@@ -88,6 +89,8 @@ void System::runAudio(const QStringList &args, bool read) {
             [this, p, read](int code, QProcess::ExitStatus status) {
                 m_audioBusy = false;
                 if (read) {
+                    const bool report = m_volumeFeedbackPending;
+                    m_volumeFeedbackPending = false;
                     auto match = QRegularExpression("Volume: ([0-9.]+)(.*)")
                                      .match(QString::fromUtf8(p->readAllStandardOutput()));
                     m_state["volumeAvailable"] =
@@ -95,9 +98,13 @@ void System::runAudio(const QStringList &args, bool read) {
                     if (m_state["volumeAvailable"].toBool()) {
                         m_state["volume"] = qBound(0., match.captured(1).toDouble(), 1.);
                         m_state["muted"] = match.captured(2).contains("MUTED");
+                        if (report)
+                            emit volumeFeedback(m_state["volume"].toDouble(),
+                                                m_state["muted"].toBool());
                     }
                 } else {
-                    m_state["audioError"] = code == 0 ? "" : "Output change failed";
+                    m_volumeFeedbackPending = code == 0 && status == QProcess::NormalExit;
+                    m_state["audioError"] = m_volumeFeedbackPending ? "" : "Output change failed";
                     QTimer::singleShot(0, this, [this] {
                         runAudio({"get-volume", "@DEFAULT_AUDIO_SINK@"}, true);
                     });

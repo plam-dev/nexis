@@ -23,7 +23,7 @@ QVariantMap Settings::options() const {
                             {"reducedMotion", false},
                             {"hoverExpand", false},
                             {"fullscreenOverlay", false},
-                            {"idleClock", true},
+                            {"idleClock", false},
                             {"attentionOverride", true},
                             {"pinned", ""},
                             {"screen", ""},

@@ -77,6 +77,8 @@ void Notifications::ownerChanged(const QString &name, const QString &, const QSt
         setOwner(owner);
 }
 void Notifications::setOwner(const QString &owner) {
+    if (owner == m_owner)
+        return;
     ++m_generation;
     ++m_inhibitionGeneration;
     m_retryTimer.stop();

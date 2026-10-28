@@ -9,6 +9,7 @@ Item {
     property bool reducedMotion: false
     property color accent: "#8bbcff"
     property int frame: 0
+    property int idleCycle: 0
     property bool blinking: false
     readonly property bool activeSurface: visible && (!Window.window || (Window.window.visible && Window.window.visibility !== Window.Minimized))
     readonly property string pose: working ? (listening ? "typingListening" : "typing") : (listening ? "listening" : "idle")
@@ -19,12 +20,17 @@ Item {
     onWorkingChanged: sprite.requestPaint()
     onListeningChanged: sprite.requestPaint()
     onAccentChanged: sprite.requestPaint()
-    onReducedMotionChanged: { frame = 0; blinking = false; sprite.requestPaint() }
+    onReducedMotionChanged: { frame = 0; idleCycle = 0; blinking = false; sprite.requestPaint() }
     Timer {
-        interval: 170
+        interval: cat.working || cat.listening ? 170 : 400
         repeat: true
-        running: cat.activeSurface && !cat.reducedMotion && (cat.working || cat.listening)
-        onTriggered: { cat.frame = (cat.frame + 1) % 8; sprite.requestPaint() }
+        running: cat.activeSurface && !cat.reducedMotion
+        onTriggered: {
+            cat.frame = (cat.frame + 1) % 8
+            if (!cat.working && !cat.listening && cat.frame === 0)
+                cat.idleCycle = (cat.idleCycle + 1) % 4
+            sprite.requestPaint()
+        }
     }
     Timer {
         interval: 5200
@@ -47,15 +53,19 @@ Item {
             ctx.reset()
             ctx.imageSmoothingEnabled = false
             const black = "#191c25", edge = "#59606e", white = "#f3f0e9", shade = "#c9cbd0"
-            const bob = cat.listening && !cat.reducedMotion && cat.frame % 8 >= 4 ? 1 : 0
+            const idle = !cat.working && !cat.listening && !cat.reducedMotion
+            const breath = idle && cat.frame >= 2 && cat.frame < 6 ? 1 : 0
+            const ear = idle && cat.idleCycle === 1 && (cat.frame === 2 || cat.frame === 3) ? 1 : 0
+            const tail = idle && cat.idleCycle === 3 && cat.frame >= 2 && cat.frame < 6 ? 1 : 0
+            const bob = cat.listening && !cat.reducedMotion && cat.frame % 8 >= 4 ? 1 : -breath
             function px(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h) }
-            // Tail, haunches and white socks stay grounded while the head bobs.
-            px(7, 19, 5, 5, edge); px(5, 17, 3, 5, black); px(4, 16, 2, 3, black)
-            px(12, 15, 15, 10, edge); px(13, 14, 13, 11, black)
-            px(17, 16, 5, 6, white); px(18, 21, 3, 2, shade)
+            // The chest expands with each idle breath while the paws stay grounded.
+            px(7, 19, 5, 5, edge); px(5, 17 - tail, 3, 5 + tail, black); px(4 + tail, 16 - tail, 2, 3, black)
+            px(12, 15 - breath, 15, 10 + breath, edge); px(13, 14 - breath, 13, 11 + breath, black)
+            px(17, 16 - breath, 5, 6 + breath, white); px(18, 21, 3, 2, shade)
             px(12, 24, 6, 2, white); px(22, 24, 6, 2, white)
             // Angular ears and a tuxedo face with white muzzle and a tiny pink nose.
-            px(11, 5 + bob, 4, 6, edge); px(12, 4 + bob, 2, 7, black)
+            px(11, 5 + bob + ear, 4, 6 - ear, edge); px(12, 4 + bob + ear, 2, 7 - ear, black)
             px(24, 5 + bob, 4, 6, edge); px(25, 4 + bob, 2, 7, black)
             px(12, 9 + bob, 15, 8, edge); px(13, 8 + bob, 13, 9, black)
             px(14, 7 + bob, 11, 9, black)
@@ -64,7 +74,7 @@ Item {
             if (!cat.blinking) {
                 px(15, 11 + bob, 2, 2, "#c6dfab"); px(23, 11 + bob, 2, 2, "#c6dfab")
                 px(16, 11 + bob, 1, 2, black); px(23, 11 + bob, 1, 2, black)
-            } else { px(15, 12, 2, 1, shade); px(23, 12, 2, 1, shade) }
+            } else { px(15, 12 + bob, 2, 1, shade); px(23, 12 + bob, 2, 1, shade) }
             px(19, 14 + bob, 2, 1, "#dba5a5"); px(20, 15 + bob, 1, 1, black)
             if (cat.listening) {
                 px(11, 7 + bob, 2, 7, edge); px(26, 7 + bob, 2, 7, edge)

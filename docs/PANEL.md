@@ -8,7 +8,8 @@ Incoming KDE notifications briefly replace the capsule text for five seconds, wh
 
 | State | Text | Pet |
 |---|---|---|
-| Idle | Clock + date | Resting tuxedo, occasional blink |
+| Idle | Cat-only by default; optional clock + date | Slow breathing, blinking, occasional ear twitch and tail flick |
+| Desktop adjustment | Volume/brightness percentage and a small bar, or a short system status for 3 seconds | Preserves current work/music pose |
 | Agent processing | Working | Typing at laptop |
 | Music playing | Current track title (Music if unavailable) | Headphones, gentle head bob |
 | Music paused | Track title and artwork, static pulse | Resting unless an agent is working |
@@ -18,6 +19,8 @@ Incoming KDE notifications briefly replace the capsule text for five seconds, wh
 | Permission / critical | Clear attention message | Keeps listening; only types if another session is processing |
 
 The cat always exists. Source/project names stay in the popup during ordinary activity. A completed response never claims the entire session or project has ended. Completion expiry uses its own timestamp, so later notifications do not restart the banner.
+
+**Show clock and date when idle** is available in System and Preferences. It defaults off, persists as `idleClock`, and updates the capsule immediately. Enabling it shows the clock/date beside the cat during idle; music, notifications and system feedback still take precedence. The clock timer stops when disabled or when its surface is hidden/minimized.
 
 ## Previous embedded layout
 
@@ -30,7 +33,7 @@ Before switching to the floating island:
 
 Live scripting measured the compact widget center at x=855 on a 1707 px display, within rounding of the panel center. The pet adapts to the panel content height; both 26 px and 36 px content geometry were observed during validation.
 
-Click the cat/clock/track title to open its popup. Tabs: Music, Agents, Activity, System. Middle click play/pauses the selected player; explicit controls are capability-gated. Reduced motion is available in System. Qoder targets the new desktop application; live hook events from the new Qoder app and concurrent MPRIS playback were received during validation. Hook setup remains opt-in for other integrations.
+Click the cat or track title to open its popup. Tabs: Music, Agents, Activity, System. Middle click play/pauses the selected player; explicit controls are capability-gated. Reduced motion is available in System. Qoder targets the new desktop application; live hook events from the new Qoder app and concurrent MPRIS playback were received during validation. Hook setup remains opt-in for other integrations.
 
 ## Rebuild / install
 
@@ -44,17 +47,19 @@ python3 scripts/install-panel.py --apply   # back up, install, start collector, 
 
 `--apply` migrates an owned standalone NEXIS runtime to the lightweight headless service. It disables the old standalone autostart to avoid competing collectors at login. A failed install restores the previous runtime binary, service unit and active/enabled service state. It never stops Claude, Qoder, music players or Plasma. Installation reuses an existing widget and preserves every previous widget ID. KDE settings are changed through the documented live Plasma scripting API, not by overwriting the running shell's config file.
 
-To stop the collector: `systemctl --user disable --now nexis-panel.service`. The clock and pet stay in the panel; music/agent updates show disconnected. To remove the widget, use KDE's panel edit mode and remove **NEXIS · Tuxedo**. The backup is retained; restore only while Plasma is stopped, or use KDE's panel editor to preserve newer unrelated layout changes.
+To stop the collector: `systemctl --user disable --now nexis-panel.service`. The pet stays in the panel; music/agent updates show disconnected. To remove the widget, use KDE's panel edit mode and remove **NEXIS · Tuxedo**. The backup is retained; restore only while Plasma is stopped, or use KDE's panel editor to preserve newer unrelated layout changes.
 
 ## Implementation and checks
 
-`ui/TuxedoCat.qml` is original local pixel artwork drawn on a 40×28 grid. It has independent work/listen flags, bounded 8-frame motion, a low-frequency idle blink, nearest-neighbor scaling and static reduced-motion poses. No downloaded asset, image-generation service, microphone or beat analysis is used.
+`ui/TuxedoCat.qml` is original local pixel artwork drawn on a 40×28 grid. It has independent work/listen flags, bounded 8-frame motion, a 3.2-second idle breathing cycle with a low-frequency blink and occasional ear/tail movement, nearest-neighbor scaling and static reduced-motion poses. Hidden/minimized windows pause the animation. No downloaded asset, image-generation service, microphone or beat analysis is used.
+
+Desktop feedback listens to the current `org.kde.plasmashell` owner's `org.kde.osdService` progress/text signals. Volume, screen/keyboard brightness and microphone levels show a percentage and bar; mute, Wi-Fi, Bluetooth and other native status events show short plain text. Each event restarts a three-second timer. Permission and critical-battery alerts retain priority; feedback otherwise temporarily takes the place of notifications/music, then restores the latest activity. Successful volume/mute changes made inside the island also use this banner. There is no startup banner or extra polling. Native Plasma OSD remains enabled and may appear too; disabling it also stops Plasma from emitting these signals.
 
 `CompactActivity.qml` is shared with the standalone preview. The widget inherits Kirigami/Plasma colors and the panel background, rather than drawing a second floating window. The D-Bus client is packaged as a private Qt plugin, coalesces signals, limits snapshots to 1 MiB and recovers when the collector restarts. There is no once-per-second process launch or shell command polling.
 
 The existing snapshot now contains presentation, media, player list, system, options and integration health. `PanelAction` exposes a small allowlist for explicit media/volume/history/reduced-motion/popup gestures, never permission decisions, shell commands, arbitrary settings or remote requests. Track text remains plain text. Media exports only bounded display fields and capability flags, with at most 32 discovered players; arbitrary MPRIS properties and metadata are excluded. Numeric controls reject strings and booleans.
 
-Automated checks cover the state matrix and exact 4-second boundary, working/listening independence, another session continuing, private-bus initial/connect/disconnect/reconnect, signal coalescing, denied unknown actions, safe panel insertion, idempotence and preservation. GUI checks exercise all pet poses, idle clock/date, animation changes and static reduced motion. Installer checks simulate install, service-start and placement failures and verify runtime recovery. All 10 CTest suites pass. The native Plasma host loads without QML errors; direct interaction with the live popup was not automated. Plasma may log a non-fatal identifier warning for the private relative QML module; it loads successfully.
+Automated checks cover the state matrix and exact 4-second boundary, working/listening independence, another session continuing, private-bus initial/connect/disconnect/reconnect, signal coalescing, denied unknown actions, safe panel insertion, idempotence and preservation. GUI checks exercise all pet poses, text-free idle, breathing/ear/tail changes, feedback progress and static reduced motion. Desktop feedback tests cover expiry refresh, forged/stale senders, Plasma restart, bounded values, disabled demo mode and successful/failed local volume writes. Installer checks simulate install, service-start and placement failures and verify runtime recovery. The native Plasma host loads without QML errors; direct interaction with the live popup was not automated. Plasma may log a non-fatal identifier warning for the private relative QML module; it loads successfully.
 
 Reference: [KDE Plasma scripting API](https://develop.kde.org/docs/plasma/scripting/api/), [Plasma widget API](https://develop.kde.org/docs/plasma/widget/).
 

@@ -204,6 +204,7 @@ Rectangle {
                 }
                 C.Slider { Layout.fillWidth: true; from: 0; to: 1; value: (fold.snapshot.system || {}).volume || 0; enabled: !!(fold.snapshot.system || {}).volumeAvailable; onMoved: fold.action("volume", value); Accessible.name: "System output volume" }
                 C.Switch { text: "Reduced motion"; checked: fold.reducedMotion; onToggled: fold.action("reducedMotion", checked); contentItem: Caption { text: parent.text; leftPadding: 52; verticalAlignment: Text.AlignVCenter } }
+                C.Switch { text: "Show clock and date when idle"; checked: !!fold.options.idleClock; onToggled: fold.action("idleClock", checked); contentItem: Caption { text: parent.text; leftPadding: 52; verticalAlignment: Text.AlignVCenter } }
                 Repeater {
                     model: fold.snapshot.health || []
                     delegate: Caption { required property var modelData; Layout.fillWidth: true; text: modelData.name + ": " + modelData.status; wrapMode: Text.WordWrap; elide: Text.ElideNone }

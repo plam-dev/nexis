@@ -1,5 +1,7 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
+import QtQuick.Controls as C
 
 Item {
     id: compact
@@ -7,30 +9,41 @@ Item {
     property var activity: ({mode: "idle", title: "", working: false, listening: false})
     property var track: ({})
     property bool reducedMotion: false
+    property bool showIdleClock: false
+    property date currentTime: new Date()
     property color foreground: "#dfdfdf"
     property color muted: "#aaaaaa"
     property color accent: "#8bbcff"
     property color attention: "#f5c16c"
-    property date currentTime: new Date()
+    readonly property bool activeSurface: visible && (!Window.window || (Window.window.visible && Window.window.visibility !== Window.Minimized))
     readonly property bool idle: !activity.mode || activity.mode === "idle"
-    readonly property bool music: activity.mode === "music"
+    readonly property bool clockVisible: idle && showIdleClock
+    readonly property bool hasText: !idle || showIdleClock
     readonly property string clockText: Qt.formatTime(currentTime, "HH:mm")
     readonly property string dateText: Qt.formatDate(currentTime, "ddd, d MMM")
-    readonly property string displayText: idle ? clockText + " · " + dateText : activity.title || "Working"
-    readonly property string subtitle: idle ? dateText : music ? track.artist || track.identity || "" : activity.subtitle || ""
+    readonly property bool music: activity.mode === "music"
+    readonly property bool hasProgress: activity.mode === "feedback" && typeof activity.progress === "number"
+    readonly property string displayText: idle ? (clockVisible ? clockText + " · " + dateText : "") : activity.title || "Working"
+    readonly property string subtitle: clockVisible ? dateText : idle ? "" : music ? track.artist || track.identity || "" : activity.subtitle || ""
     property int titleFontSize: 15
     property int subtitleFontSize: 12
     property real maximumWidth: 640
     implicitHeight: 52
     readonly property real petWidth: Math.min(48, (height || implicitHeight) * 1.1)
     readonly property real artSize: Math.max(16, Math.min(44, (height || implicitHeight) - 10))
-    readonly property real naturalTextWidth: Math.ceil(Math.max(titleMetrics.advanceWidth, titleMetrics.boundingRect.width, subtitleMetrics.advanceWidth, subtitleMetrics.boundingRect.width)) + 2
-    readonly property real chromeWidth: 24 + petWidth + 8 + (music ? artSize + 17 + 16 : 0)
+    readonly property real naturalTextWidth: hasText ? Math.max(hasProgress ? 140 : 0, Math.ceil(Math.max(titleMetrics.advanceWidth, titleMetrics.boundingRect.width, subtitleMetrics.advanceWidth, subtitleMetrics.boundingRect.width)) + 2) : 0
+    readonly property real chromeWidth: 24 + petWidth + (hasText ? 8 : 0) + (music ? artSize + 17 + 16 : 0)
     readonly property real textWidth: Math.max(0, Math.min(naturalTextWidth, maximumWidth - chromeWidth))
     implicitWidth: Math.min(maximumWidth, chromeWidth + naturalTextWidth)
     Accessible.role: Accessible.Button
-    Accessible.name: displayText + ". " + pet.Accessible.name
-    Timer { interval: 1000; running: compact.visible && compact.idle; repeat: true; onTriggered: compact.currentTime = new Date() }
+    Accessible.name: (displayText ? displayText + ". " : "") + pet.Accessible.name
+    onClockVisibleChanged: if (clockVisible) currentTime = new Date()
+    Timer {
+        interval: 1000
+        repeat: true
+        running: compact.activeSurface && compact.clockVisible
+        onTriggered: compact.currentTime = new Date()
+    }
     TextMetrics { id: titleMetrics; text: titleLabel.text; font: titleLabel.font }
     TextMetrics { id: subtitleMetrics; text: compact.subtitle; font: subtitleLabel.font }
     RowLayout {
@@ -49,6 +62,7 @@ Item {
             fallbackColor: compact.accent
         }
         ColumnLayout {
+            visible: compact.hasText
             Layout.preferredWidth: compact.textWidth
             Layout.minimumWidth: 0
             Layout.fillWidth: true
@@ -57,7 +71,7 @@ Item {
                 id: titleLabel
                 objectName: "activityText"
                 Layout.fillWidth: true
-                text: compact.idle ? compact.clockText : compact.displayText
+                text: compact.clockVisible ? compact.clockText : compact.displayText
                 textFormat: Text.PlainText
                 color: compact.activity.mode === "attention" ? compact.attention : compact.foreground
                 font.pixelSize: compact.titleFontSize
@@ -74,6 +88,18 @@ Item {
                 color: compact.muted
                 font.pixelSize: compact.subtitleFontSize
                 elide: Text.ElideRight
+            }
+            C.ProgressBar {
+                id: feedbackProgress
+                objectName: "feedbackProgress"
+                visible: compact.hasProgress
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                from: 0; to: 1
+                value: compact.hasProgress ? Math.max(0, Math.min(1, compact.activity.progress)) : 0
+                Accessible.name: compact.displayText
+                background: Rectangle { implicitHeight: 3; radius: 2; color: compact.muted; opacity: 0.25 }
+                contentItem: Item { implicitHeight: 3; Rectangle { width: feedbackProgress.visualPosition * parent.width; height: parent.height; radius: 2; color: compact.accent } }
             }
         }
         TuxedoCat {

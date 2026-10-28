@@ -2,7 +2,7 @@
 
 NEXIS sends no telemetry and opens no network listener. It uses local Unix sockets and desktop D-Bus. All components run as the logged-in user.
 
-The bridge parses at most 64 KiB of vendor JSON. It constructs a new event object from an allowlist; raw prompt, command, tool arguments/results, transcripts, messages, tokens, full paths and environment values are discarded. Known tool names become generic categories. It does not extract target paths. Session, workspace, tool-call and subagent IDs are hashed. Only a sanitized project basename is displayed; project names can still be sensitive, so disable history when appropriate.
+The bridge parses at most 64 KiB of vendor JSON. It constructs a new event object from an allowlist; raw prompt, command, tool arguments/results, transcripts, messages, tokens, full paths and environment values are discarded. Known tool names become generic categories. It does not extract target paths. Session, workspace, tool-call and subagent IDs are hashed. An optional SHA-256 fingerprint of tool name and canonical tool-input JSON correlates permission events that omit their tool-call ID; raw arguments never cross the socket, and this fingerprint is not exported in snapshots or history. Only a sanitized project basename is displayed; project names can still be sensitive, so disable history when appropriate.
 
 No raw event is logged by default. Rejected events are dropped silently. Default history is bounded and stored only in memory, with a user-visible clear/off switch. Restart drops all sessions and history; nothing is invented as live following restart. Settings contain appearance and interaction preferences, never prompts or source code.
 

@@ -46,7 +46,7 @@ class PresentationTest : public QObject {
         QCOMPARE(state["title"].toString(), QString("Bambina"));
         QVERIFY(!state.values().contains("Private project"));
     }
-    void missingUnknownOrStoppedMusicReturnsToClockWhileAgentWorks() {
+    void missingUnknownOrStoppedMusicReturnsToIdleWhileAgentWorks() {
         for (const auto &title : {QString(), QString("   "), QString("Unknown Music"),
                                   QString(" unknown TRACK ")}) {
             auto state = presentation({session("running")},
@@ -65,7 +65,7 @@ class PresentationTest : public QObject {
             presentation({}, {{"playing", true}, {"title", QString(500, 'x')}}, {}, 10000);
         QCOMPARE(state["title"].toString().size(), 200);
     }
-    void completionWithoutMusicReturnsToClockEvenWithAnotherWorkingAgent() {
+    void completionWithoutMusicReturnsToIdleEvenWithAnotherWorkingAgent() {
         const QVariantList sessions{session("turn_complete"), session("running", "claude_code")};
         auto state = presentation(sessions, {}, {}, 13999);
         QCOMPARE(state["mode"].toString(), QString("completion"));

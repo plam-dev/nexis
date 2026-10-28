@@ -54,6 +54,8 @@ class ClientTest : public QObject {
         QCOMPARE(source.actions, 0);
         client.action("playPause");
         QTRY_COMPARE(source.actions, 1);
+        client.action("idleClock", true);
+        QTRY_COMPARE(source.actions, 2);
         QVERIFY(bus.unregisterService("org.nexis.Desktop"));
         QTRY_VERIFY(!client.connected());
         QVERIFY(client.data().isEmpty());

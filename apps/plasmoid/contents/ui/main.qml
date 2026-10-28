@@ -28,7 +28,7 @@ PlasmoidItem {
         Layout.fillHeight: true
         Behavior on capsuleWidth { NumberAnimation { duration: root.options.reducedMotion ? 0 : 250; easing.type: Easing.OutCubic } }
         Rectangle { anchors.fill: parent; anchors.topMargin: 2; anchors.bottomMargin: 2; radius: height / 2; color: root.lightTheme ? "#f1f4f9" : "#171b23"; border.color: "#414b5b" }
-        CompactActivity { id: face; anchors.fill: parent; activity: root.state; track: root.track; foreground: root.lightTheme ? "#243248" : "#edf2fb"; muted: root.lightTheme ? "#5b6c83" : "#9daabe"; accent: "#8bbcff"; reducedMotion: !!root.options.reducedMotion }
+        CompactActivity { id: face; anchors.fill: parent; activity: root.state; track: root.track; showIdleClock: !!root.options.idleClock; foreground: root.lightTheme ? "#243248" : "#edf2fb"; muted: root.lightTheme ? "#5b6c83" : "#9daabe"; accent: "#8bbcff"; reducedMotion: !!root.options.reducedMotion }
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.MiddleButton

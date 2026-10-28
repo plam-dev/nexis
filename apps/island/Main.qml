@@ -64,9 +64,9 @@ ApplicationWindow {
         visible: !island.expanded
         padding: 0
         background: Item {}
-        Accessible.name: "Expand: " + compactFace.displayText
+        Accessible.name: "Expand: " + (compactFace.displayText || "Tuxedo cat")
         onClicked: { island.expanded = true; island.requestActivate() }
-        contentItem: CompactActivity { id: compactFace; maximumWidth: Math.max(0, island.maximumNotchWidth - 48); activity: island.compactState; track: island.track; reducedMotion: !island.motion; foreground: island.palette.text; muted: island.colors.dark ? "#9daabe" : "#5b6c83"; accent: "#8bbcff" }
+        contentItem: CompactActivity { id: compactFace; maximumWidth: Math.max(0, island.maximumNotchWidth - 48); activity: island.compactState; track: island.track; showIdleClock: !!island.opts.idleClock; reducedMotion: !island.motion; foreground: island.palette.text; muted: island.colors.dark ? "#9daabe" : "#5b6c83"; accent: "#8bbcff" }
     }
     FoldSurface {
         id: fold
@@ -140,7 +140,7 @@ ApplicationWindow {
                         onActivated: settings.set("middleClick", ["media", "toggle", "none"][currentIndex])
                         Accessible.name: "Middle-click action"
                     }
-                    Switch { text: "Show clock when idle"; checked: opts.idleClock; onToggled: settings.set("idleClock", checked) }
+                    Switch { objectName: "idleClockSwitch"; text: "Show clock and date when idle"; checked: opts.idleClock; onToggled: settings.set("idleClock", checked) }
                     ComboBox {
                         Layout.fillWidth: true
                         model: ["Show highest priority", "Pin music", "Pin agents"]

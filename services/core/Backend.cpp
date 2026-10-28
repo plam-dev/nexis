@@ -10,11 +10,13 @@
 #include <algorithm>
 namespace Nexis {
 Backend::Backend(Settings *s, Media *m, System *sys, bool demo, QObject *p)
-    : QObject(p), m_notifications(!demo, this), m_settings(s), m_media(m), m_system(sys),
-      m_demo(demo) {
+    : QObject(p), m_notifications(!demo, this), m_osd(!demo, this), m_settings(s), m_media(m),
+      m_system(sys), m_demo(demo) {
     connect(m, &Media::changed, this, &Backend::changed);
     connect(sys, &System::changed, this, &Backend::changed);
     connect(&m_notifications, &Notifications::changed, this, &Backend::changed);
+    connect(&m_osd, &Osd::changed, this, &Backend::changed);
+    connect(sys, &System::volumeFeedback, &m_osd, &Osd::volumeChanged);
     connect(s, &Settings::changed, this, [this] {
         if (!m_settings->options()["history"].toBool()) {
             m_registry.clearHistory();
@@ -269,6 +271,14 @@ QVariantMap Backend::presentationState() const {
         out["subtitle"] = notice["appName"];
         out["notificationId"] = notice["id"];
     }
+    const auto feedback = m_osd.banner();
+    if (!feedback.isEmpty() && out["status"] != "critical" && out["status"] != "waiting_permission") {
+        out.remove("notificationId");
+        for (auto it = feedback.cbegin(); it != feedback.cend(); ++it)
+            out[it.key()] = it.value();
+        if (!feedback.contains("subtitle"))
+            out.remove("subtitle");
+    }
     return out;
 }
 bool Backend::PanelAction(const QString &action, const QDBusVariant &value) {
@@ -302,8 +312,9 @@ bool Backend::PanelAction(const QString &action, const QDBusVariant &value) {
             dismissNotification(v.toUInt());
         else
             openNotification(v.toUInt());
-    } else if (action == "reducedMotion" && v.metaType() == QMetaType::fromType<bool>())
-        m_settings->set("reducedMotion", v.toBool());
+    } else if ((action == "reducedMotion" || action == "idleClock") &&
+               v.metaType() == QMetaType::fromType<bool>())
+        m_settings->set(action, v.toBool());
     else if (action == "expanded" && v.metaType() == QMetaType::fromType<bool>())
         expanded(v.toBool());
     else

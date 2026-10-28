@@ -44,6 +44,8 @@ class CoreTest : public QObject {
         r.accept(event("SessionStart", "one", "qoder_app"));
         r.accept(event("SessionStart", "two"));
         r.accept(event("SessionStart", "one", "claude_code", "/other/project"));
+        QCOMPARE(r.sessions().size(), 3);
+        r.accept(event("SessionStart", "one", "qoder_app", "/other/project"));
         QCOMPARE(r.sessions().size(), 4);
     }
     void privacyAndValidation() {
@@ -61,6 +63,13 @@ class CoreTest : public QObject {
         QVERIFY(!json.contains("/home/private"));
         QVERIFY(!json.contains("secret-session"));
         QCOMPARE(n["tool_kind"].toString(), QString("shell"));
+        QVERIFY(!n.contains("tool_input"));
+        Registry r;
+        QVERIFY(r.accept(n));
+        auto invalid = n;
+        invalid["event_id"] = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        invalid["tool_fingerprint"] = "not-a-hash";
+        QVERIFY(!r.accept(invalid));
         QVERIFY(normalize(raw, "untrusted").isEmpty());
         raw["hook_event_name"] = "MadeUp";
         QVERIFY(normalize(raw, "qoder_app").isEmpty());
@@ -97,6 +106,55 @@ class CoreTest : public QObject {
         QCOMPARE(r.sessions()[0].toMap()["status"].toString(), QString("waiting_permission"));
         QVERIFY(send("PostToolUse", "B"));
         QCOMPARE(r.sessions()[0].toMap()["status"].toString(), QString("running"));
+    }
+    void claudePermissionWithoutToolId_data() {
+        QTest::addColumn<QString>("completion");
+        QTest::newRow("allowed") << QString("PostToolUse");
+        QTest::newRow("failed") << QString("PostToolUseFailure");
+    }
+    void claudePermissionWithoutToolId() {
+        QFETCH(QString, completion);
+        Registry r;
+        auto send = [&](QString name, QString id, QString command) {
+            QJsonObject raw{{"hook_event_name", name},
+                            {"session_id", "one"},
+                            {"cwd", "/work/project"},
+                            {"tool_name", "Bash"},
+                            {"tool_input", QJsonObject{{"command", command}}}};
+            if (!id.isEmpty())
+                raw["tool_use_id"] = id;
+            return r.accept(normalize(raw, "claude_code"));
+        };
+        QVERIFY(send("PreToolUse", "A", "echo unrelated"));
+        QVERIFY(send("PreToolUse", "B", "echo approved"));
+        QVERIFY(send("PermissionRequest", "", "echo approved"));
+        QVERIFY(send("PostToolUse", "A", "echo unrelated"));
+        QCOMPARE(r.sessions()[0].toMap()["status"].toString(), QString("waiting_permission"));
+        QVERIFY(send(completion, "B", "echo approved"));
+        QCOMPARE(r.sessions()[0].toMap()["status"].toString(), QString("running"));
+        QCOMPARE(r.sessions()[0].toMap()["activeTools"].toInt(), 0);
+    }
+    void preToolUseDoesNotResolvePermission() {
+        Registry r;
+        auto raw = QJsonObject{{"session_id", "one"},
+                               {"cwd", "/work/project"},
+                               {"tool_use_id", "A"},
+                               {"tool_name", "Bash"}};
+        raw["hook_event_name"] = "PermissionRequest";
+        QVERIFY(r.accept(normalize(raw, "claude_code")));
+        raw["hook_event_name"] = "PreToolUse";
+        QVERIFY(r.accept(normalize(raw, "claude_code")));
+        QCOMPARE(r.sessions()[0].toMap()["status"].toString(), QString("waiting_permission"));
+    }
+    void claudeSessionFollowsWorkingDirectoryChanges() {
+        Registry r;
+        QVERIFY(r.accept(event("PermissionRequest", "one", "claude_code", "/work/project")));
+        QVERIFY(r.accept(event("Stop", "one", "claude_code", "/work/project/dist")));
+        QCOMPARE(r.sessions().size(), 1);
+        QCOMPARE(r.sessions()[0].toMap()["status"].toString(), QString("turn_complete"));
+        QVERIFY(r.accept(event("PermissionRequest", "two", "claude_code", "/work/project")));
+        QCOMPARE(r.sessions().size(), 2);
+        QCOMPARE(r.sessions()[0].toMap()["status"].toString(), QString("waiting_permission"));
     }
     void inFlightCollectionsAreBoundedAndReconciled() {
         Registry r;

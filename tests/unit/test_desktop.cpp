@@ -42,6 +42,30 @@ class FakeScript : public QObject {
 class DesktopTest : public QObject {
     Q_OBJECT
   private slots:
+    void idleClockCanBeDisabledEnabledAndReloaded() {
+        QSettings store("nexis", "Desktop");
+        store.remove("idleClock");
+        store.sync();
+        Settings settings;
+        QVERIFY(!settings.options()["idleClock"].toBool());
+        Media media;
+        System system;
+        Backend backend(&settings, &media, &system, false);
+        QVERIFY(backend.PanelAction("idleClock", QDBusVariant(true)));
+        Settings reloaded;
+        QVERIFY(reloaded.options()["idleClock"].toBool());
+        QVERIFY(!backend.PanelAction("idleClock", QDBusVariant("false")));
+        QVERIFY(!backend.PanelAction("idleClock", QDBusVariant(0)));
+        QVERIFY(settings.options()["idleClock"].toBool());
+        QVERIFY(backend.PanelAction("idleClock", QDBusVariant(false)));
+        Settings disabled;
+        QVERIFY(!disabled.options()["idleClock"].toBool());
+        settings.set("idleClock", QString("false"));
+        const auto options =
+            QJsonDocument::fromJson(backend.Snapshot().toUtf8()).object()["options"].toObject();
+        QVERIFY(options["idleClock"].isBool());
+        QVERIFY(!options["idleClock"].toBool());
+    }
     void notchHeightIsPersistedAndBounded() {
         QSettings store("nexis", "Desktop");
         store.remove("notchHeight");

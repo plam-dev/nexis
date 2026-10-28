@@ -14,6 +14,7 @@ class System : public QObject {
     Q_INVOKABLE void toggleMute();
   signals:
     void changed();
+    void volumeFeedback(double volume, bool muted);
   private slots:
     void refresh();
 
@@ -25,6 +26,7 @@ class System : public QObject {
                            {"critical", false},
                            {"audioError", ""}};
     bool m_audioBusy = false;
+    bool m_volumeFeedbackPending = false;
     QTimer m_timer;
 };
 } // namespace Nexis

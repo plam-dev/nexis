@@ -89,6 +89,7 @@ void DesktopClient::action(const QString &name, const QVariant &value) {
                                           "mute",
                                           "clearHistory",
                                           "reducedMotion",
+                                          "idleClock",
                                           "expanded",
                                           "dismissNotification",
                                           "openNotification"};
